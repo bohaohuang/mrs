@@ -8,6 +8,7 @@ __pycache__/
 
 # customized
 model/log/
+model/model.pt
 
 # C extensions
 *.so
