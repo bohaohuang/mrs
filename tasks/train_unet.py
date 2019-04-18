@@ -10,6 +10,7 @@ import argparse
 import torchvision
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils import data
 
 # Own modules
 from model import unet
@@ -25,9 +26,9 @@ GPU = 1
 ENCODER_NAME = 'res101'
 N_CLASS = 2
 INIT_LR = 1e-5
-MILESTONES = [60, 80]
+MILESTONES = [10, 15]
 DROP_RATE = 0.1
-EPOCHS = 10
+EPOCHS = 20
 SAVE_DIR = r'/home/lab/Documents/bohao/code/mrs/model/model.pt'
 LOG_DIR = r'/home/lab/Documents/bohao/code/mrs/model/log'
 SAVE_EPOCH = 1
@@ -86,8 +87,8 @@ def main(flags):
                                                        transform=transforms['train'], transform_ftr=transforms_ftr['train']),
               'valid':data_loader.RemoteSensingDataset(file_list=file_list_valid, input_size=flags.input_size,
                                                        transform=transforms['valid'], transform_ftr=transforms_ftr['valid'])}
-    reader = {x: data_loader.InfiniteDataLoader(reader[x], batch_size=flags.batch_size, shuffle=True,
-                                                num_workers=flags.batch_size, drop_last=True)
+    reader = {x: data.DataLoader(reader[x], batch_size=flags.batch_size, shuffle=True, num_workers=flags.batch_size,
+                                 drop_last=True)
               for x in ['train', 'valid']}
 
     # build the model

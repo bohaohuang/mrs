@@ -7,4 +7,8 @@
 #SBATCH -p collinslab --gres=gpu:1
 module load Python-GPU/3.6.5
 export PYTHONPATH=$PYTHONPATH:/dscrhome/bh163/code/mrs
-python prepare_inria_dcc.py
+LR=1e-4
+LRSTR=1e4
+EP=20
+SD=/work/bh163/Models/pt_resunet_lr${LRSTR}_ep${EP}/
+python train_unet.py --init-lr=${LR} --epochs=${EP} --save-dir=${SD}model.pt --log-dir=${SD} --data-file=/work/bh163/mrs/inria --gpu=0
