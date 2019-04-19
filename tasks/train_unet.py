@@ -26,9 +26,9 @@ BATCH_SIZE = 8
 GPU = 1
 ENCODER_NAME = 'res101'
 N_CLASS = 2
-INIT_LR_ENCODER = 1e-4
-INIT_LR_DECODER = 1e-5
-MILESTONES = [20, 30]
+INIT_LR_ENCODER = 1e-5
+INIT_LR_DECODER = 1e-4
+MILESTONES = '20_30'
 DROP_RATE = 0.1
 EPOCHS = 40
 SAVE_DIR = r'/home/lab/Documents/bohao/code/mrs/model/model2.pt'
@@ -47,7 +47,7 @@ def read_flag():
     parser.add_argument('--n-class', type=int, default=N_CLASS, help='#classes in the output')
     parser.add_argument('--init-lr-encoder', type=float, default=INIT_LR_ENCODER, help='initial learning rate for encoder')
     parser.add_argument('--init-lr-decoder', type=float, default=INIT_LR_DECODER, help='initial learning rate for decoder')
-    parser.add_argument('--milestones', type=list, default=MILESTONES, help='milestones for multi step lr drop')
+    parser.add_argument('--milestones', type=str, default=MILESTONES, help='milestones for multi step lr drop')
     parser.add_argument('--drop-rate', type=float, default=DROP_RATE, help='drop rate at each milestone in scheduler')
     parser.add_argument('--epochs', type=int, default=EPOCHS, help='num of epochs to train')
     parser.add_argument('--save-dir', type=str, default=SAVE_DIR, help='path to save the model')
@@ -55,6 +55,7 @@ def read_flag():
     parser.add_argument('--save-epoch', type=int, default=SAVE_EPOCH, help='model will be saved every #epochs')
 
     flags = parser.parse_args()
+    flags.milestones = misc_utils.str2list(flags.milestones, sep='_')
     return flags
 
 
