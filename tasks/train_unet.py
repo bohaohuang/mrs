@@ -26,7 +26,8 @@ BATCH_SIZE = 8
 GPU = 1
 ENCODER_NAME = 'res101'
 N_CLASS = 2
-INIT_LR = 1e-4
+INIT_LR_ENCODER = 1e-4
+INIT_LR_DECODER = 1e-5
 MILESTONES = [20, 30]
 DROP_RATE = 0.1
 EPOCHS = 40
@@ -44,7 +45,8 @@ def read_flag():
     parser.add_argument('--encoder-name', type=str, default=ENCODER_NAME, help='which encoder to use for extractor, '
                                                                                'see model/model.py for more details')
     parser.add_argument('--n-class', type=int, default=N_CLASS, help='#classes in the output')
-    parser.add_argument('--init-lr', type=float, default=INIT_LR, help='initial learning rate')
+    parser.add_argument('--init-lr-encoder', type=float, default=INIT_LR_ENCODER, help='initial learning rate for encoder')
+    parser.add_argument('--init-lr-decoder', type=float, default=INIT_LR_DECODER, help='initial learning rate for decoder')
     parser.add_argument('--milestones', type=list, default=MILESTONES, help='milestones for multi step lr drop')
     parser.add_argument('--drop-rate', type=float, default=DROP_RATE, help='drop rate at each milestone in scheduler')
     parser.add_argument('--epochs', type=int, default=EPOCHS, help='num of epochs to train')
@@ -98,9 +100,9 @@ def main(flags):
 
     # make optimizers
     optm = optim.Adam([
-        {'params': model.encoder.parameters(), 'lr': 0.1*flags.init_lr},
-        {'params': model.decoder.parameters(), 'lr': flags.init_lr}
-    ], lr=flags.init_lr)
+        {'params': model.encoder.parameters(), 'lr': flags.init_lr_encoder},
+        {'params': model.decoder.parameters(), 'lr': flags.init_lr_decoder}
+    ], lr=flags.init_lr_decoder)
     # Decay LR by a factor of drop_rate at each milestone
     scheduler = optim.lr_scheduler.MultiStepLR(optm, milestones=flags.milestones, gamma=flags.drop_rate)
 
