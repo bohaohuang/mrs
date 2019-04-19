@@ -10,6 +10,7 @@ import time
 # Libs
 import torch
 import torchvision
+import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from tensorboardX import SummaryWriter
@@ -90,52 +91,84 @@ def iou_pytorch(outputs: torch.Tensor, labels: torch.Tensor, smooth=1e-6):
     return iou.mean()
 
 
+class EncoderRes101(nn.Module):
+    def __init__(self):
+        super(EncoderRes101, self).__init__()
+        encoder = list(torchvision.models.resnet101(pretrained=True).children())
+        self.conv1 = nn.Sequential(*encoder[:5])
+        self.conv2 = encoder[5]
+        self.conv3 = encoder[6]
+        self.conv4 = encoder[7]
+
+    def forward(self, x):
+        s1 = self.conv1(x)
+        s2 = self.conv2(s1)
+        s3 = self.conv3(s2)
+        s4 = self.conv4(s3)
+        return s1, s2, s3, s4
+
+
+class DecoderRes101(nn.Module):
+    def __init__(self, n_class):
+        super(DecoderRes101, self).__init__()
+        self.up1 = up(2048, 1024)
+        self.up2 = up(1024, 512)
+        self.up3 = up(512, 256)
+        self.final_conv1 = nn.Conv2d(256, 128, 3, padding=1)
+        self.final_conv2 = nn.Conv2d(128, 128, 3, padding=1)
+        self.classify = nn.Conv2d(128, n_class, 1)
+
+    def forward(self, s1, s2, s3, s4):
+        x = self.up1.forward(s4, s3)
+        x = self.up2.forward(x, s2)
+        x = self.up3.forward(x, s1)
+        x = F.interpolate(x, scale_factor=4, mode='bilinear')
+        x = self.final_conv1(x)
+        x = self.final_conv2(x)
+        x = self.classify(x)
+        return x
+
+
 class Unet(nn.Module):
+    # TODO load pretrained resnet
     def __init__(self, encoder_name, n_class):
         super(Unet, self).__init__()
         self.encoder_name = misc_utils.stem_string(encoder_name)
+        self.n_class = n_class
         if self.encoder_name == 'res101':
-            encoder = list(torchvision.models.resnet101(pretrained=True).children())
-            self.conv1 = nn.Sequential(*encoder[:5])
-            self.conv2 = encoder[5]
-            self.conv3 = encoder[6]
-            self.conv4 = encoder[7]
-            self.up1 = up(2048, 1024)
-            self.up2 = up(1024, 512)
-            self.up3 = up(512, 256)
-            self.final_conv1 = nn.Conv2d(256, 128, 3, padding=1)
-            self.final_conv2 = nn.Conv2d(128, 128, 3, padding=1)
-            self.classify = nn.Conv2d(128, n_class, 1)
+            self.encoder = EncoderRes101()
+            self.decoder = DecoderRes101(self.n_class)
         else:
             raise NotImplementedError('Encoder name {} not recognized'.format(self.encoder_name))
 
     def forward(self, x):
         if self.encoder_name == 'res101':
-            s1 = self.conv1(x)
-            s2 = self.conv2(s1)
-            s3 = self.conv3(s2)
-            s4 = self.conv4(s3)
-            x = self.up1.forward(s4, s3)
-            x = self.up2.forward(x, s2)
-            x = self.up3.forward(x, s1)
-            x = F.interpolate(x, scale_factor=4, mode='bilinear')
-            x = self.final_conv1(x)
-            x = self.final_conv2(x)
-            x = self.classify(x)
+            s1, s2, s3, s4 = self.encoder.forward(x)
+            x = self.decoder.forward(s1, s2, s3, s4)
             return x
         else:
             raise NotImplementedError('Encoder name {} not recognized'.format(self.encoder_name))
 
     @staticmethod
-    def mask_to_rgb(tensor_mask):
-        tensor_mask = tensor_mask.cpu()
-        tensor_mask = torch.stack((tensor_mask, tensor_mask, tensor_mask), dim=0)
-        return (255 * tensor_mask).float()
+    def decode_labels(label):
+        # TODO label color dict as input parameter
+        def decode_(a, color_dict):
+            return color_dict[a]
+
+        label_colors = {0: (255, 255, 255), 1: (0, 0, 255), 2: (0, 255, 255), 3: (255, 0, 0),
+                        4: (255, 255, 0), 5: (0, 255, 0)}
+        vfunc = np.vectorize(decode_)
+        rgb_label = vfunc(label, label_colors)
+        return np.dstack(rgb_label) / 255
+
+    def mask_to_rgb(self, tensor_mask):
+        tensor_mask = tensor_mask.cpu().data.numpy()
+        tt = torchvision.transforms.ToTensor()
+        return tt(self.decode_labels(tensor_mask)).float()
 
     def train_model(self, device, epochs, optm, criterion, scheduler, reader, save_dir,
           summary_path, rev_transform, save_epoch=5, verb_step=100):
-        # TODO fix tensorboard image summary
-        # TODO learning rate for different part
+        # TODO record learning rate
         writer = SummaryWriter(summary_path)
         best_model_wts = copy.deepcopy(self.state_dict())
         best_loss = 0.0
@@ -193,11 +226,14 @@ class Unet(nn.Module):
                     for img_cnt in range(ftr.shape[0]):
                         lbl_img = self.mask_to_rgb(lbl[img_cnt])
                         pred_img = self.mask_to_rgb(torch.argmax(pred[img_cnt].cpu(), dim=0))
+
                         tb_img = torchvision.utils.make_grid(
                             [rev_transform(ftr[img_cnt].cpu()), lbl_img, pred_img])
                         writer.add_image('image_valid_{}'.format(img_cnt), tb_img, epoch)
                     writer.add_scalar('loss_valid', running_loss, epoch)
                     writer.add_scalar('iou_valid', running_iou, epoch)
+                    writer.add_scalar('lr_encoder', scheduler.get_lr()[0], epoch)
+                    writer.add_scalar('lr_encoder', scheduler.get_lr()[1], epoch)
                     elapsed = time.time() - start_time
                     print('Epoch {}, {} Step:{} Loss: {:.4f}, IoU: {:.4f}, Duration: {:.0f}m {:.0f}s'.format(
                         epoch, phase, reader_cnt, running_loss, running_iou, elapsed // 60, elapsed % 60))

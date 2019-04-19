@@ -4,6 +4,7 @@
 
 
 # Built-in
+import time
 import argparse
 
 # Libs
@@ -21,16 +22,16 @@ from mrs_utils import xval_utils
 
 DATA_FILE = r'/hdd/mrs/inria/file_list.txt'
 INPUT_SIZE = 224
-BATCH_SIZE = 10
+BATCH_SIZE = 8
 GPU = 1
 ENCODER_NAME = 'res101'
 N_CLASS = 2
-INIT_LR = 1e-5
-MILESTONES = [10, 15]
+INIT_LR = 1e-4
+MILESTONES = [20, 30]
 DROP_RATE = 0.1
-EPOCHS = 20
-SAVE_DIR = r'/home/lab/Documents/bohao/code/mrs/model/model.pt'
-LOG_DIR = r'/home/lab/Documents/bohao/code/mrs/model/log'
+EPOCHS = 40
+SAVE_DIR = r'/home/lab/Documents/bohao/code/mrs/model/model2.pt'
+LOG_DIR = r'/home/lab/Documents/bohao/code/mrs/model/log/log2'
 SAVE_EPOCH = 1
 
 
@@ -96,7 +97,10 @@ def main(flags):
     model = unet.Unet(flags.encoder_name, flags.n_class).to(device)
 
     # make optimizers
-    optm = optim.Adam(model.parameters(), lr=flags.init_lr)
+    optm = optim.Adam([
+        {'params': model.encoder.parameters(), 'lr': 0.1*flags.init_lr},
+        {'params': model.decoder.parameters(), 'lr': flags.init_lr}
+    ], lr=flags.init_lr)
     # Decay LR by a factor of drop_rate at each milestone
     scheduler = optim.lr_scheduler.MultiStepLR(optm, milestones=flags.milestones, gamma=flags.drop_rate)
 
@@ -104,9 +108,12 @@ def main(flags):
     criterion = nn.CrossEntropyLoss()
 
     # train the model
+    start_time = time.time()
     model.train_model(device=device, epochs=flags.epochs, optm=optm, criterion=criterion, scheduler=scheduler,
                       reader=reader, save_dir=flags.save_dir, summary_path=flags.log_dir, rev_transform=inv_normalize,
                       save_epoch=flags.save_epoch)
+    duration = time.time() - start_time
+    print('Total time: {} hours'.format(duration/60/60))
 
 
 if __name__ == '__main__':
