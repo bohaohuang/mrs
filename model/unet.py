@@ -91,10 +91,28 @@ def iou_pytorch(outputs: torch.Tensor, labels: torch.Tensor, smooth=1e-6):
     return iou.mean()
 
 
+def load_without_encoder_name(model, state_dict):
+    own_state = model.state_dict()
+    for name, param in state_dict.items():
+        name_new = name[8:] # remove 'encoder.'
+        if name_new not in own_state:
+            continue
+        if isinstance(param, nn.Parameter):
+            param = param.data
+        own_state[name_new].copy_(param)
+    model.load_state_dict(own_state)
+    return model
+
+
 class EncoderRes101(nn.Module):
-    def __init__(self):
+    def __init__(self, predir=None):
         super(EncoderRes101, self).__init__()
-        encoder = list(torchvision.models.resnet101(pretrained=True).children())
+        if not predir:
+            encoder = list(torchvision.models.resnet101(pretrained=True).children())
+        else:
+            encoder = torchvision.models.resnet101(pretrained=False)
+            encoder = load_without_encoder_name(encoder, torch.load(predir))
+            encoder = list(encoder.children())
         self.conv1 = nn.Sequential(*encoder[:5])
         self.conv2 = encoder[5]
         self.conv3 = encoder[6]
@@ -131,12 +149,12 @@ class DecoderRes101(nn.Module):
 
 class Unet(nn.Module):
     # TODO load pretrained resnet
-    def __init__(self, encoder_name, n_class):
+    def __init__(self, encoder_name, n_class, predir=None):
         super(Unet, self).__init__()
         self.encoder_name = misc_utils.stem_string(encoder_name)
         self.n_class = n_class
         if self.encoder_name == 'res101':
-            self.encoder = EncoderRes101()
+            self.encoder = EncoderRes101(predir)
             self.decoder = DecoderRes101(self.n_class)
         else:
             raise NotImplementedError('Encoder name {} not recognized'.format(self.encoder_name))

@@ -24,7 +24,7 @@ from mrs_utils import xval_utils
 DATA_FILE = r'/hdd/mrs/inria/file_list.txt'
 INPUT_SIZE = 224
 BATCH_SIZE = 8
-GPU = 1
+GPU = 0
 ENCODER_NAME = 'res101'
 DECODER_NAME = 'unet'
 N_CLASS = 2
@@ -33,8 +33,9 @@ INIT_LR_DECODER = 1e-4
 MILESTONES = '20_30'
 DROP_RATE = 0.1
 EPOCHS = 60
-SAVE_DIR = r'/home/lab/Documents/bohao/code/mrs/model'
+SAVE_DIR = r'/home/lab/Documents/bohao/code/mrs/model/log_pre'
 SAVE_EPOCH = 1
+PREDIR = None # r'/home/lab/Documents/bohao/code/ufers/model/model3.pt'
 
 
 def get_unique_name(encoder_name, decoder_name, lre, lrd, ep, ms):
@@ -59,12 +60,14 @@ def read_flag():
     parser.add_argument('--epochs', type=int, default=EPOCHS, help='num of epochs to train')
     parser.add_argument('--save-dir', type=str, default=SAVE_DIR, help='path to save the model')
     parser.add_argument('--save-epoch', type=int, default=SAVE_EPOCH, help='model will be saved every #epochs')
+    parser.add_argument('--predir', type=str, default=PREDIR, help='path to pretrained encoder')
 
     flags = parser.parse_args()
-    flags.save_dir = os.path.join(flags.save_dir, get_unique_name(flags.encoder_name, flags.decoder_name,
-                                                                  flags.init_lr_encoder, flags.init_lr_decoder,
-                                                                  flags.epochs, flags.milestones))
-    flags.log_dir = os.path.join(flags.save_dir, 'log')
+    home_dir = os.path.join(flags.save_dir, get_unique_name(flags.encoder_name, flags.decoder_name,
+                                                            flags.init_lr_encoder, flags.init_lr_decoder,
+                                                            flags.epochs, flags.milestones))
+    flags.log_dir = os.path.join(home_dir, 'log')
+    flags.save_dir = os.path.join(home_dir, 'model.pt')
     flags.milestones = misc_utils.str2list(flags.milestones, sep='_')
 
     return flags
@@ -108,7 +111,7 @@ def main(flags):
 
     # build the model
     device = misc_utils.set_gpu(flags.gpu)
-    model = unet.Unet(flags.encoder_name, flags.n_class).to(device)
+    model = unet.Unet(flags.encoder_name, flags.n_class, flags.predir).to(device)
 
     # make optimizers
     optm = optim.Adam([
