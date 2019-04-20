@@ -9,6 +9,7 @@ __pycache__/
 # customized
 model/log/
 *.pt
+model/res101_unet_lre1E-05_lrd1E-04_ep60_ms20_30/
 
 # C extensions
 *.so

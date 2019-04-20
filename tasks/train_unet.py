@@ -4,6 +4,7 @@
 
 
 # Built-in
+import os
 import time
 import argparse
 
@@ -25,15 +26,20 @@ INPUT_SIZE = 224
 BATCH_SIZE = 8
 GPU = 1
 ENCODER_NAME = 'res101'
+DECODER_NAME = 'unet'
 N_CLASS = 2
 INIT_LR_ENCODER = 1e-5
 INIT_LR_DECODER = 1e-4
 MILESTONES = '20_30'
 DROP_RATE = 0.1
-EPOCHS = 40
-SAVE_DIR = r'/home/lab/Documents/bohao/code/mrs/model/model2.pt'
-LOG_DIR = r'/home/lab/Documents/bohao/code/mrs/model/log/log2'
+EPOCHS = 60
+SAVE_DIR = r'/home/lab/Documents/bohao/code/mrs/model'
 SAVE_EPOCH = 1
+
+
+def get_unique_name(encoder_name, decoder_name, lre, lrd, ep, ms):
+    return '{}_{}_lre{:.0E}_lrd{:.0E}_ep{}_ms{}'.format(encoder_name, decoder_name, lre, lrd, ep, ms)
+
 
 
 def read_flag():
@@ -44,6 +50,7 @@ def read_flag():
     parser.add_argument('--gpu', type=int, default=GPU, help='which gpu to use')
     parser.add_argument('--encoder-name', type=str, default=ENCODER_NAME, help='which encoder to use for extractor, '
                                                                                'see model/model.py for more details')
+    parser.add_argument('--decoder-name', type=str, default=DECODER_NAME, help='which decoder style to use')
     parser.add_argument('--n-class', type=int, default=N_CLASS, help='#classes in the output')
     parser.add_argument('--init-lr-encoder', type=float, default=INIT_LR_ENCODER, help='initial learning rate for encoder')
     parser.add_argument('--init-lr-decoder', type=float, default=INIT_LR_DECODER, help='initial learning rate for decoder')
@@ -51,11 +58,15 @@ def read_flag():
     parser.add_argument('--drop-rate', type=float, default=DROP_RATE, help='drop rate at each milestone in scheduler')
     parser.add_argument('--epochs', type=int, default=EPOCHS, help='num of epochs to train')
     parser.add_argument('--save-dir', type=str, default=SAVE_DIR, help='path to save the model')
-    parser.add_argument('--log-dir', type=str, default=LOG_DIR, help='directory to save tensorboard summaries')
     parser.add_argument('--save-epoch', type=int, default=SAVE_EPOCH, help='model will be saved every #epochs')
 
     flags = parser.parse_args()
+    flags.save_dir = os.path.join(flags.save_dir, get_unique_name(flags.encoder_name, flags.decoder_name,
+                                                                  flags.init_lr_encoder, flags.init_lr_decoder,
+                                                                  flags.epochs, flags.milestones))
+    flags.log_dir = os.path.join(flags.save_dir, 'log')
     flags.milestones = misc_utils.str2list(flags.milestones, sep='_')
+
     return flags
 
 
