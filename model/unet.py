@@ -4,6 +4,7 @@
 
 
 # Built-in
+import os
 import copy
 import time
 
@@ -13,10 +14,14 @@ import torchvision
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils import data
 from tensorboardX import SummaryWriter
 
 # Own modules
+from data import data_loader
+from data import patch_extractor
 from mrs_utils import misc_utils
+from mrs_utils import metric_utils
 
 
 class up(nn.Module):
@@ -91,28 +96,15 @@ def iou_pytorch(outputs: torch.Tensor, labels: torch.Tensor, smooth=1e-6):
     return iou.mean()
 
 
-def load_without_encoder_name(model, state_dict):
-    own_state = model.state_dict()
-    for name, param in state_dict.items():
-        name_new = name[8:] # remove 'encoder.'
-        if name_new not in own_state:
-            continue
-        if isinstance(param, nn.Parameter):
-            param = param.data
-        own_state[name_new].copy_(param)
-    model.load_state_dict(own_state)
-    return model
-
-
 class EncoderRes101(nn.Module):
     def __init__(self, predir=None):
         super(EncoderRes101, self).__init__()
         if not predir:
             encoder = list(torchvision.models.resnet101(pretrained=True).children())
         else:
-            encoder = torchvision.models.resnet101(pretrained=False)
-            encoder = load_without_encoder_name(encoder, torch.load(predir))
-            encoder = list(encoder.children())
+            encoder = UFER('res101')
+            encoder.load_state_dict(torch.load(predir))
+            encoder = list(encoder.children())[0]
         self.conv1 = nn.Sequential(*encoder[:5])
         self.conv2 = encoder[5]
         self.conv3 = encoder[6]
@@ -184,7 +176,7 @@ class Unet(nn.Module):
         tt = torchvision.transforms.ToTensor()
         return tt(self.decode_labels(tensor_mask)).float()
 
-    def train_model(self, device, epochs, optm, criterion, scheduler, reader, save_dir,
+    def train_model(self, device, epochs, alpha, optm, criterion, scheduler, reader, save_dir,
           summary_path, rev_transform, save_epoch=5, verb_step=100):
         # TODO record learning rate
         writer = SummaryWriter(summary_path)
@@ -221,9 +213,8 @@ class Unet(nn.Module):
                     # zero the parameter gradients
                     optm.zero_grad()
 
-                    #loss = cross_entropy2d(input=pred, target=lbl)
-                    #loss = criterion(F.log_softmax(pred, 1), lbl)
-                    loss = criterion(pred, lbl)
+                    # loss = criterion(pred, lbl)
+                    loss = metric_utils.weighted_jaccard_loss(pred, lbl, criterion, alpha)
                     iou = iou_pytorch(pred, lbl)
 
                     # backward + optimize only if in training phase
@@ -261,8 +252,41 @@ class Unet(nn.Module):
                         best_model_wts = copy.deepcopy(self.state_dict())
 
             if epoch % save_epoch == 0:
-                torch.save(best_model_wts, save_dir)
+                torch.save(self.state_dict(), os.path.join(save_dir, 'model_{}.pt'.format(epoch)))
         self.load_state_dict(best_model_wts)
+
+    def eval_tile(self, img, input_size, batch_size, pad, device, transforms):
+        self.eval()
+        tile_size = img.shape[:2]
+        reader = data_loader.TileDataset(img, input_size, pad, transforms)
+        reader = data.DataLoader(reader, batch_size=batch_size, shuffle=False, num_workers=batch_size, drop_last=False)
+
+        # evaluate tile
+        tile_pred = []
+        for patch in reader:
+            patch = patch.to(device)
+            pred = self.forward(patch).data.cpu().numpy()
+            pred = np.transpose(pred, (0, 2, 3, 1))
+            tile_pred.append(pred)
+        tile_pred = np.concatenate(tile_pred, axis=0)
+        tile_pred = patch_extractor.unpatch_block(tile_pred, tile_size, input_size, tile_size, input_size, 0)
+        return np.argmax(tile_pred, axis=-1)
+
+
+class UFER(nn.Module):
+    def __init__(self, encoder_name):
+        super(UFER, self).__init__()
+        encoder_name = misc_utils.stem_string(encoder_name)
+        if encoder_name == 'res101':
+            encoder = torchvision.models.resnet101(pretrained=True)
+            self.encoder = nn.Sequential(*list(encoder.children())[:-1])
+        else:
+            raise NotImplementedError('Encoder name {} not recognized'.format(encoder_name))
+
+    def forward(self, x):
+        ftr = self.encoder(x)
+        ftr = torch.reshape(ftr, (-1, 2048))
+        return ftr
 
 
 

@@ -4,7 +4,6 @@ This file defines data loader for some benchmarked remote sensing datasets
 
 
 # Built-in
-import os
 
 # Libs
 import torch
@@ -14,6 +13,7 @@ from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 
 # Own modules
+from data import patch_extractor
 from mrs_utils import misc_utils
 
 
@@ -80,6 +80,33 @@ class RemoteSensingDataset(Dataset):
         if self.transform_ftr:
             rgb = self.transform_ftr(rgb)
         return rgb, gt
+
+
+class TileDataset(Dataset):
+    """Read patches from a tile"""
+    def __init__(self, data, input_size=(224, 224), pad=0, transform=None):
+        self.data = data
+        self.transform = transform
+        self.input_size = input_size
+        self.pad = pad
+        if self.pad > 0:
+            self.data = patch_extractor.pad_image(self.data, self.pad)
+        tile_size = data.shape[:2]
+        self.grid = patch_extractor.make_grid(tile_size, self.input_size, overlap=0)
+
+    def __len__(self):
+        return len(self.grid)
+
+    def get_patch(self, patch_id):
+        y, x = self.grid[patch_id]
+        patch = patch_extractor.crop_image(self.data, y, x, *self.input_size)
+        return patch
+
+    def __getitem__(self, idx):
+        patch = self.get_patch(idx)
+        if self.transform:
+            patch = self.transform(patch)
+        return patch
 
 
 class InfiniteDataLoader(DataLoader):

@@ -27,7 +27,10 @@ def split_by_id(file_list, id_list, filter_keys):
 def get_inria_city_id(file_list):
     city_id_list = []
     for fl in file_list:
-        city_name = str(os.path.basename(fl).split('_')[0])
+        if isinstance(fl, list):
+            city_name = str(os.path.basename(fl[0]).split('_')[0])
+        else:
+            city_name = str(os.path.basename(fl).split('_')[0])
         city_id = int(''.join(s for s in city_name if s.isdigit()))
         city_id_list.append(city_id)
     return city_id_list

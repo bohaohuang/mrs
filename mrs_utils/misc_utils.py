@@ -1,6 +1,7 @@
 # Built-in
 import os
 import time
+import json
 import pickle
 from functools import wraps
 
@@ -78,6 +79,8 @@ def load_file(file_name, **kwargs):
                 data = f.readlines()
         elif file_name[-3:] == 'csv':
             data = np.genfromtxt(file_name, delimiter=',', dtype=None, encoding='UTF-8')
+        elif file_name[-4:] == 'json':
+            data = json.load(open(file_name))
         elif 'pil' in kwargs and kwargs['pil']:
             data = Image.open(file_name)
         else:
@@ -107,6 +110,8 @@ def save_file(file_name, data, **kwargs):
                 f.writelines(data)
         elif file_name[-3:] == 'csv':
             np.savetxt(file_name, data, delimiter=',', fmt=kwargs['fmt'])
+        elif file_name[-4:] == 'json':
+            json.dump(data, open(file_name, 'w'))
         else:
             data = Image.fromarray(data.astype(np.uint8))
             data.save(file_name)
@@ -218,6 +223,15 @@ def remove_digits(s):
     :return: digits removed string
     """
     return ''.join([c for c in s if not c.isdigit()])
+
+
+def get_digits(s):
+    """
+    Get digits in the given string, cast to int
+    :param s: input string
+    :return: int from string
+    """
+    return int(''.join([c for c in s if c.isdigit()]))
 
 
 def get_model_summary(model, shape, device=None):

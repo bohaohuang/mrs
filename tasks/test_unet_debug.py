@@ -30,17 +30,17 @@ DECODER_NAME = 'unet'
 N_CLASS = 2
 INIT_LR_ENCODER = 1e-5
 INIT_LR_DECODER = 1e-5
-MILESTONES = '40'
+MILESTONES = '20_30'
 DROP_RATE = 0.1
 EPOCHS = 40
 SAVE_DIR = r'/home/lab/Documents/bohao/code/mrs/model/log_pre'
-SAVE_EPOCH = 5
+SAVE_EPOCH = 1
 PREDIR = None # r'/home/lab/Documents/bohao/code/ufers/model/model3.pt'
-ALPHA = 0.3
 
 
-def get_unique_name(encoder_name, decoder_name, lre, lrd, ep, ms, alpha):
-    return '{}_{}_lre{:.0E}_lrd{:.0E}_ep{}_ms{}_a{}'.format(encoder_name, decoder_name, lre, lrd, ep, ms, alpha)
+def get_unique_name(encoder_name, decoder_name, lre, lrd, ep, ms):
+    return '{}_{}_lre{:.0E}_lrd{:.0E}_ep{}_ms{}'.format(encoder_name, decoder_name, lre, lrd, ep, ms)
+
 
 
 def read_flag():
@@ -61,15 +61,13 @@ def read_flag():
     parser.add_argument('--save-dir', type=str, default=SAVE_DIR, help='path to save the model')
     parser.add_argument('--save-epoch', type=int, default=SAVE_EPOCH, help='model will be saved every #epochs')
     parser.add_argument('--predir', type=str, default=PREDIR, help='path to pretrained encoder')
-    parser.add_argument('--alpha', type=float, default=ALPHA, help='weight on loss')
 
     flags = parser.parse_args()
     home_dir = os.path.join(flags.save_dir, get_unique_name(flags.encoder_name, flags.decoder_name,
                                                             flags.init_lr_encoder, flags.init_lr_decoder,
-                                                            flags.epochs, flags.milestones,
-                                                            misc_utils.float2str(flags.alpha)))
+                                                            flags.epochs, flags.milestones))
     flags.log_dir = os.path.join(home_dir, 'log')
-    flags.save_dir = home_dir
+    flags.save_dir = os.path.join(home_dir, 'model.pt')
     flags.milestones = misc_utils.str2list(flags.milestones, sep='_')
 
     return flags
@@ -112,27 +110,28 @@ def main(flags):
               for x in ['train', 'valid']}
 
     # build the model
+    import torch
     device = misc_utils.set_gpu(flags.gpu)
     model = unet.Unet(flags.encoder_name, flags.n_class, flags.predir).to(device)
+    model.load_state_dict(torch.load(r'/home/lab/Documents/bohao/code/mrs/model/log_pre/res101_unet_lre1E-05_lrd1E-05_ep40_ms40/model_39.pt'))
 
-    # make optimizers
-    optm = optim.Adam([
-        {'params': model.encoder.parameters(), 'lr': flags.init_lr_encoder},
-        {'params': model.decoder.parameters(), 'lr': flags.init_lr_decoder}
-    ], lr=flags.init_lr_decoder)
-    # Decay LR by a factor of drop_rate at each milestone
-    scheduler = optim.lr_scheduler.MultiStepLR(optm, milestones=flags.milestones, gamma=flags.drop_rate)
+    import torch.nn
+    import numpy as np
+    import matplotlib.pyplot as plt
+    model.eval()
+    for ftr, lbl in reader['valid']:
+        ftr = ftr.to(device)
+        sf = torch.nn.Softmax(dim=1)
+        pred = sf(model.forward(ftr)).data.cpu().numpy()
+        pred = np.transpose(pred, (0, 2, 3, 1))
+        print(pred.shape)
+        for i in range(8):
+            plt.imshow(pred[i, : ,: , -1])
+            plt.colorbar()
+            plt.show()
 
-    # define loss function
-    criterion = nn.CrossEntropyLoss()
-
-    # train the model
-    start_time = time.time()
-    model.train_model(device=device, epochs=flags.epochs, alpha=flags.alpha, optm=optm, criterion=criterion,
-                      scheduler=scheduler, reader=reader, save_dir=flags.save_dir, summary_path=flags.log_dir,
-                      rev_transform=inv_normalize, save_epoch=flags.save_epoch)
-    duration = time.time() - start_time
-    print('Total time: {} hours'.format(duration/60/60))
+            plt.imshow(np.argmax(pred[i, :, :, :], axis=-1))
+            plt.show()
 
 
 if __name__ == '__main__':
