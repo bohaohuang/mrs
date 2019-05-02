@@ -244,3 +244,15 @@ def get_model_summary(model, shape, device=None):
     if not device:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     summary(model.to(device), shape)
+
+
+def set_random_seed(seed_):
+    """
+    Set random seed for torch, cudnn and numpy
+    :param seed_: random seed to use, could be your lucky number :)
+    :return:
+    """
+    torch.manual_seed(seed_)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    np.random.seed(seed_)

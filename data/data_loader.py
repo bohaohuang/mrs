@@ -18,6 +18,9 @@ from mrs_utils import misc_utils
 
 
 class JointFlip(object):
+    """
+    Random horizontal or vertical flip of a given image pair
+    """
     def __call__(self, ftr, lbl):
         method = [Image.FLIP_LEFT_RIGHT, Image.FLIP_TOP_BOTTOM]
         rand = np.random.randint(3)
@@ -28,6 +31,9 @@ class JointFlip(object):
 
 
 class JointRotate(object):
+    """
+    Random clockwise rotation of a given image pair
+    """
     def __call__(self, ftr, lbl):
         method = [Image.ROTATE_90, Image.ROTATE_180, Image.ROTATE_270]
         rand = np.random.randint(4)
@@ -38,12 +44,19 @@ class JointRotate(object):
 
 
 class JointToTensor(object):
+    """
+    Cast given image pair to pytorch tensors
+    Note: this function take cares of channel switching and data rescaling
+    """
     def __call__(self, ftr, lbl):
         tt = torchvision.transforms.ToTensor()
         return tt(ftr), torch.from_numpy(np.array(lbl))
 
 
 class JointCompose(object):
+    """
+    Compose torchvision transforms for a pair of given images
+    """
     def __init__(self, transforms):
         self.transforms = transforms
 
@@ -54,8 +67,16 @@ class JointCompose(object):
 
 
 class RemoteSensingDataset(Dataset):
-    """Remote sensing dataset"""
-    def __init__(self, txt_file=None, file_list=None, input_size=224, transform=None, transform_ftr=None):
+    """Remote sensing dataset, the patch data files can be created by patch_extractor.py"""
+    def __init__(self, txt_file=None, file_list=None, transform=None, transform_ftr=None):
+        """
+        Initialize a remote sensing dataset class
+        :param txt_file: a file stores data files, each line is a sample, if this is None, file_,list cannot be None
+        :param file_list: a list of lists that contains data files, each sublist is a sample
+        :param transform: torchvision transforms or other compatible composed transforms, they will be applied to both
+        feature and label
+        :param transform_ftr: transforms (e.g., normalize) that only will be applied to feature not label
+        """
         if not file_list:
             assert txt_file
             self.file_list = misc_utils.load_file(txt_file)
@@ -63,13 +84,17 @@ class RemoteSensingDataset(Dataset):
             self.file_list = file_list
         self.transform = transform
         self.transform_ftr = transform_ftr
-        self.input_size = input_size
 
     def __len__(self):
         return len(self.file_list)
 
     @staticmethod
     def stem_file_names(line):
+        """
+        Get rgb and gt name from a file string
+        :param line: a string contains files for one sample
+        :return: rgb file name and gt file name
+        """
         return [misc_utils.stem_string(a, lower=False) for a in line.split(' ')]
 
     def __getitem__(self, idx):
@@ -85,6 +110,13 @@ class RemoteSensingDataset(Dataset):
 class TileDataset(Dataset):
     """Read patches from a tile"""
     def __init__(self, data, input_size=(224, 224), pad=0, transform=None):
+        """
+        Patch reader of a given tile
+        :param data: tile image
+        :param input_size: size of the output shape
+        :param pad: #pixels will be padded around the tile
+        :param transform: torchvision transforms or other compatible composed transforms
+        """
         self.data = data
         self.transform = transform
         self.input_size = input_size
@@ -98,6 +130,11 @@ class TileDataset(Dataset):
         return len(self.grid)
 
     def get_patch(self, patch_id):
+        """
+        Get patch of given patch_id, patch id created by patch_extractor.make_grid function
+        :param patch_id: id of the given patch
+        :return:
+        """
         y, x = self.grid[patch_id]
         patch = patch_extractor.crop_image(self.data, y, x, *self.input_size)
         return patch
@@ -110,6 +147,9 @@ class TileDataset(Dataset):
 
 
 class InfiniteDataLoader(DataLoader):
+    """
+    DataLoader wrapper, this will keep read data and never ends
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Initialize an iterator over the dataset.

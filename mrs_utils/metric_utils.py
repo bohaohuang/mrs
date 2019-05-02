@@ -34,13 +34,20 @@ def make_one_hot(labels, C=2):
     '''
     one_hot = torch.cuda.FloatTensor(labels.size(0), C, labels.size(2), labels.size(3)).zero_()
     target = one_hot.scatter_(1, labels.data, 1)
-
     target = Variable(target)
-
     return target
 
 
 def weighted_jaccard_loss(outputs, labels, criterion, alpha, delta=1e-12):
+    """
+    Weighted jaccard loss and a criterion function of choice
+    :param outputs: predictions of shape C*H*W
+    :param labels: ground truth data of shape H*W
+    :param criterion: criterion function, could be cross entropy
+    :param alpha: weight on jaccard index function
+    :param delta: small value that avoid zero value in denominator
+    :return:
+    """
     #TODO this does not support multi-categorical loss yet
     orig_loss = criterion(outputs, labels)
     labels = make_one_hot(torch.unsqueeze(labels, dim=1))
@@ -48,6 +55,24 @@ def weighted_jaccard_loss(outputs, labels, criterion, alpha, delta=1e-12):
     union_ = torch.sum(outputs + labels) - inter_
     jaccard_loss = torch.mean((inter_ + delta) / (union_ + delta))
     return alpha * (1 - jaccard_loss) + (1 - alpha) * orig_loss
+
+
+class WeightedJaccardCriterion(object):
+    """
+    Weighted Jaccard criterion function used in training
+    """
+    def __init__(self, alpha, criterion, delta=1e-12):
+        """
+        :param alpha: weight on jaccard index function
+        :param criterion: criterion function, could be cross entropy
+        :param delta: small value that avoid zero value in denominator
+        """
+        self.alpha = alpha
+        self.criterion = criterion
+        self.delta = delta
+
+    def __call__(self, pred, lbl):
+        return weighted_jaccard_loss(pred, lbl, self.criterion, self.alpha, self.delta)
 
 
 def iou_metric(truth, pred, divide=False):

@@ -23,7 +23,8 @@ from mrs_utils import metric_utils
 DATA_DIR = r'/media/ei-edl01/data/uab_datasets/inria/data/Original_Tiles'
 GT_DATA_DIR = r'/media/ei-edl01/data/uab_datasets/inria/data/TilePreproc/MultChanOp_chans3_Divide_dF255p000'
 GPU = 0
-PRETRAINED_DIR = r'/home/lab/Documents/bohao/code/mrs/model/log_pre/res101_unet_lre1E-05_lrd1E-05_ep40_ms40/model_20.pt'
+#PRETRAINED_DIR = r'/home/lab/Documents/bohao/code/mrs/model/log_pre/res101_unet_lre1E-04_lrd1E-04_ep40_ms40_a0/model_35.pt'
+PRETRAINED_DIR = r'/home/lab/Documents/bohao/code/mrs/model/log/res101_unet_lre1E-05_lrd1E-05_ep40_ms40/model_39.pt'
 ENCODER_NAME = 'res101'
 DECODER_NAME = 'unet'
 N_CLASS = 2
@@ -48,23 +49,7 @@ def read_flag():
     parser.add_argument('--batch-size', type=int, default=BATCH_SIZE, help='batch size in training')
     parser.add_argument('--pad', type=int, default=PAD, help='padding around the tile')
 
-    '''
-    parser.add_argument('--init-lr-encoder', type=float, default=INIT_LR_ENCODER, help='initial learning rate for encoder')
-    parser.add_argument('--init-lr-decoder', type=float, default=INIT_LR_DECODER, help='initial learning rate for decoder')
-    parser.add_argument('--milestones', type=str, default=MILESTONES, help='milestones for multi step lr drop')
-    parser.add_argument('--drop-rate', type=float, default=DROP_RATE, help='drop rate at each milestone in scheduler')
-    parser.add_argument('--epochs', type=int, default=EPOCHS, help='num of epochs to train')
-    parser.add_argument('--save-dir', type=str, default=SAVE_DIR, help='path to save the model')
-    parser.add_argument('--save-epoch', type=int, default=SAVE_EPOCH, help='model will be saved every #epochs')
-    '''
-
     flags = parser.parse_args()
-    '''home_dir = os.path.join(flags.save_dir, get_unique_name(flags.encoder_name, flags.decoder_name,
-                                                            flags.init_lr_encoder, flags.init_lr_decoder,
-                                                            flags.epochs, flags.milestones))
-    flags.log_dir = os.path.join(home_dir, 'log')
-    flags.save_dir = os.path.join(home_dir, 'model.pt')
-    flags.milestones = misc_utils.str2list(flags.milestones, sep='_')'''
     return flags
 
 
@@ -106,7 +91,7 @@ def main(flags):
 
     save_dir = os.path.join(os.path.dirname(flags.pretrained_dir), 'results')
     results, summary = metric_utils.eval_on_dataset(file_list, (flags.input_size, flags.input_size), flags.batch_size,
-                                                    flags.pad, transforms, device, model, city_name_id, save_dir, True)
+                                                    flags.pad, transforms, device, model, city_name_id, save_dir, False)
     print(summary)
 
 

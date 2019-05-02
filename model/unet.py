@@ -27,9 +27,7 @@ from mrs_utils import metric_utils
 class up(nn.Module):
     """
     A class for creating neural network blocks containing layers:
-
     Bilinear interpolation --> Convlution + Leaky ReLU --> Convolution + Leaky ReLU
-
     This is used in the UNet Class to create a UNet like NN architecture.
     ...
     Methods
@@ -72,7 +70,6 @@ class up(nn.Module):
             tensor
                 output of the NN block.
         """
-
         # Bilinear interpolation with scaling 2.
         x = F.interpolate(x, scale_factor=2, mode='bilinear')
         # Convolution + Leaky ReLU
@@ -97,6 +94,9 @@ def iou_pytorch(outputs: torch.Tensor, labels: torch.Tensor, smooth=1e-6):
 
 
 class EncoderRes101(nn.Module):
+    """
+    ResNet 101 encoder
+    """
     def __init__(self, predir=None):
         super(EncoderRes101, self).__init__()
         if not predir:
@@ -119,6 +119,9 @@ class EncoderRes101(nn.Module):
 
 
 class DecoderRes101(nn.Module):
+    """
+    ResNet101 decoder for the U-Net model
+    """
     def __init__(self, n_class):
         super(DecoderRes101, self).__init__()
         self.up1 = up(2048, 1024)
@@ -140,8 +143,14 @@ class DecoderRes101(nn.Module):
 
 
 class Unet(nn.Module):
-    # TODO load pretrained resnet
     def __init__(self, encoder_name, n_class, predir=None):
+        """
+        U-Net model
+        :param encoder_name: name of the encoder, this will determine the architecture of the model, currently only
+        support ResNet101
+        :param n_class: #classes in the labels
+        :param predir: if true, load weights from the given model file instead of initializing from ImageNet weights
+        """
         super(Unet, self).__init__()
         self.encoder_name = misc_utils.stem_string(encoder_name)
         self.n_class = n_class
@@ -160,100 +169,139 @@ class Unet(nn.Module):
             raise NotImplementedError('Encoder name {} not recognized'.format(self.encoder_name))
 
     @staticmethod
-    def decode_labels(label):
-        # TODO label color dict as input parameter
+    def decode_labels(label, label_color_dict):
+        """
+        Make label file into rgb color map
+        :param label: label map of shape H*W
+        :param label_color_dict: dictionary of colors
+        :return: rgb color map of shape H*W*3
+        """
         def decode_(a, color_dict):
             return color_dict[a]
-
-        label_colors = {0: (255, 255, 255), 1: (0, 0, 255), 2: (0, 255, 255), 3: (255, 0, 0),
-                        4: (255, 255, 0), 5: (0, 255, 0)}
         vfunc = np.vectorize(decode_)
-        rgb_label = vfunc(label, label_colors)
+        rgb_label = vfunc(label, label_color_dict)
         return np.dstack(rgb_label) / 255
 
-    def mask_to_rgb(self, tensor_mask):
+    def mask_to_rgb(self, tensor_mask, label_color_dict):
+        """
+        Make label/prediction tensor into rgb tensors
+        :param tensor_mask: label/prediction tensor of shape H*W
+        :param label_color_dict: dictionary of colors
+        :return: rgb color map tensor of shape 3*H*W
+        """
         tensor_mask = tensor_mask.cpu().data.numpy()
         tt = torchvision.transforms.ToTensor()
-        return tt(self.decode_labels(tensor_mask)).float()
+        return tt(self.decode_labels(tensor_mask, label_color_dict)).float()
 
-    def train_model(self, device, epochs, alpha, optm, criterion, scheduler, reader, save_dir,
-          summary_path, rev_transform, save_epoch=5, verb_step=100):
-        # TODO record learning rate
+    def train_model(self, device, epochs, optm, criterion, scheduler, reader, save_dir,
+                    summary_path, rev_transform, label_color_dict, save_epoch=5, verb_step=100):
+        """
+        Train the U-Net model
+        :param device: which GPU device to run the model
+        :param epochs: #epochs to run
+        :param optm: optimizer
+        :param criterion: loss function, could be a class defined in metric_utils.py
+        :param scheduler: learning rate manager, created by lr_scheduler in PyTorch
+        :param reader: data reader, could be the one created from data_loader.py
+        :param save_dir: directory to save the model weights
+        :param summary_path: directory to save the tensorboard summaries
+        :param rev_transform: reverse transform for visualizing images in tensorboard
+        :param label_color_dict: colormap dictionary for visualizing prediction map in tensorboard
+        :param save_epoch: #epochs to save the model once
+        :param verb_step: #steps to print progress message
+        :return: trained model
+        """
         writer = SummaryWriter(summary_path)
-        best_model_wts = copy.deepcopy(self.state_dict())
-        best_loss = 0.0
         step = 0
 
         for epoch in range(epochs):
             print('Epoch {}/{}'.format(epoch, epochs - 1))
             print('-' * 10)
+            start_time = time.time()
+            running_loss = 0.0
+            running_iou = 0.0
+            scheduler.step()
+            self.train()  # Set model to training mode
 
-            for phase in ['train', 'valid']:
-                start_time = time.time()
-                running_loss = 0.0
-                running_iou = 0.0
-                if phase == 'train':
-                    scheduler.step()
-                    self.train()  # Set model to training mode
-                else:
-                    self.eval()  # Set model to evaluate mode
+            reader_cnt = 1
+            for ftr, lbl in reader['train']:
+                reader_cnt += 1
+                step += 1
 
-                reader_cnt = 1
-                ftr, lbl, pred = None, None, None
-                for ftr, lbl in reader[phase]:
-                    reader_cnt += 1
+                ftr = ftr.to(device)
+                lbl = torch.squeeze(lbl, dim=1).long().to(device)
+                pred = self.forward(ftr)
 
-                    if phase == 'train':
-                        step += 1
+                # zero the parameter gradients
+                optm.zero_grad()
 
-                    ftr = ftr.to(device)
-                    lbl = torch.squeeze(lbl, dim=1).long().to(device)
-                    pred = self.forward(ftr)
+                # loss = criterion(pred, lbl)
+                loss = criterion(pred, lbl)
+                iou = iou_pytorch(pred, lbl)
 
-                    # zero the parameter gradients
-                    optm.zero_grad()
+                # backward + optimize
+                loss.backward()
+                optm.step()
 
-                    # loss = criterion(pred, lbl)
-                    loss = metric_utils.weighted_jaccard_loss(pred, lbl, criterion, alpha)
-                    iou = iou_pytorch(pred, lbl)
-
-                    # backward + optimize only if in training phase
-                    if phase == 'train':
-                        loss.backward()
-                        optm.step()
-
-                    running_loss = running_loss * (reader_cnt - 1) / reader_cnt + loss.item() / reader_cnt
-                    running_iou = running_iou * (reader_cnt - 1) / reader_cnt + iou.item() / reader_cnt
-                    if phase == 'train' and reader_cnt % verb_step == 0:
-                        writer.add_scalar('loss_train', loss.item(), step)
-                        writer.add_scalar('iou_train', iou.item(), step)
-                        elapsed = time.time() - start_time
-                        print('Epoch {}, {} Step:{} Loss: {:.4f}, IoU: {:.4f}, Duration: {:.0f}m {:.0f}s'.format(
-                            epoch, phase, reader_cnt, loss.item(), iou.item(), elapsed // 60, elapsed % 60))
-
-                if phase == 'valid':
-                    for img_cnt in range(ftr.shape[0]):
-                        lbl_img = self.mask_to_rgb(lbl[img_cnt])
-                        pred_img = self.mask_to_rgb(torch.argmax(pred[img_cnt].cpu(), dim=0))
-
-                        tb_img = torchvision.utils.make_grid(
-                            [rev_transform(ftr[img_cnt].cpu()), lbl_img, pred_img])
-                        writer.add_image('image_valid_{}'.format(img_cnt), tb_img, epoch)
-                    writer.add_scalar('loss_valid', running_loss, epoch)
-                    writer.add_scalar('iou_valid', running_iou, epoch)
-                    writer.add_scalar('lr_encoder', scheduler.get_lr()[0], epoch)
-                    writer.add_scalar('lr_encoder', scheduler.get_lr()[1], epoch)
+                running_loss = running_loss * (reader_cnt - 1) / reader_cnt + loss.item() / reader_cnt
+                running_iou = running_iou * (reader_cnt - 1) / reader_cnt + iou.item() / reader_cnt
+                if reader_cnt % verb_step == 0:
+                    writer.add_scalar('loss_train', loss.item(), step)
+                    writer.add_scalar('iou_train', iou.item(), step)
                     elapsed = time.time() - start_time
-                    print('Epoch {}, {} Step:{} Loss: {:.4f}, IoU: {:.4f}, Duration: {:.0f}m {:.0f}s'.format(
-                        epoch, phase, reader_cnt, running_loss, running_iou, elapsed // 60, elapsed % 60))
-                    if running_loss < best_loss:
-                        # deep copy the model
-                        best_loss = running_loss
-                        best_model_wts = copy.deepcopy(self.state_dict())
+                    print('Epoch {}, train Step:{} Loss: {:.4f}, IoU: {:.4f}, Duration: {:.0f}m {:.0f}s'.format(
+                        epoch, reader_cnt, loss.item(), iou.item(), elapsed // 60, elapsed % 60))
+
+            # validate on the model
+            self.validate(epoch, scheduler, label_color_dict, rev_transform, reader, optm, criterion, writer)
 
             if epoch % save_epoch == 0:
                 torch.save(self.state_dict(), os.path.join(save_dir, 'model_{}.pt'.format(epoch)))
-        self.load_state_dict(best_model_wts)
+
+    def validate(self, epoch, scheduler, label_color_dict, rev_transform, reader, optm, criterion, writer):
+        """
+        Do validation, this has to be in a seperate function to avoid unnecessary memory usage
+        :param epoch: the current epoch number
+        :param scheduler: learning rate manager, created by lr_scheduler in PyTorch
+        :param label_color_dict: colormap dictionary for visualizing prediction map in tensorboard
+        :param rev_transform: reverse transform for visualizing images in tensorboard
+        :param reader: data reader, could be the one created from data_loader.py
+        :param optm: optimizer
+        :param criterion: loss function, could be a class defined in metric_utils.py
+        :param writer: summary writer
+        :return:
+        """
+        start_time = time.time()
+        running_loss = 0.0
+        running_iou = 0.0
+        with torch.no_grad():
+            reader_cnt = 1
+            for ftr, lbl in reader['valid']:
+                reader_cnt += 1
+                ftr = ftr.to(device)
+                lbl = torch.squeeze(lbl, dim=1).long().to(device)
+                pred = self.forward(ftr)
+                # zero the parameter gradients
+                optm.zero_grad()
+                # loss = criterion(pred, lbl)
+                loss = criterion(pred, lbl)
+                iou = iou_pytorch(pred, lbl)
+                running_loss = running_loss * (reader_cnt - 1) / reader_cnt + loss.item() / reader_cnt
+                running_iou = running_iou * (reader_cnt - 1) / reader_cnt + iou.item() / reader_cnt
+            for img_cnt in range(ftr.shape[0]):
+                lbl_img = self.mask_to_rgb(lbl[img_cnt], label_color_dict)
+                pred_img = self.mask_to_rgb(torch.argmax(pred[img_cnt].cpu(), dim=0), label_color_dict)
+
+                tb_img = torchvision.utils.make_grid(
+                    [rev_transform(ftr[img_cnt].cpu()), lbl_img, pred_img])
+                writer.add_image('image_valid_{}'.format(img_cnt), tb_img, epoch)
+            writer.add_scalar('loss_valid', running_loss, epoch)
+            writer.add_scalar('iou_valid', running_iou, epoch)
+            writer.add_scalar('lr_encoder', scheduler.get_lr()[0], epoch)
+            writer.add_scalar('lr_encoder', scheduler.get_lr()[1], epoch)
+            elapsed = time.time() - start_time
+            print('Epoch {}, valid Step:{} Loss: {:.4f}, IoU: {:.4f}, Duration: {:.0f}m {:.0f}s'.format(
+                epoch, reader_cnt, running_loss, running_iou, elapsed // 60, elapsed % 60))
 
     def eval_tile(self, img, input_size, batch_size, pad, device, transforms):
         self.eval()
