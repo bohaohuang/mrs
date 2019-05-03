@@ -103,7 +103,7 @@ class EncoderRes101(nn.Module):
             encoder = list(torchvision.models.resnet101(pretrained=True).children())
         else:
             encoder = UFER('res101')
-            encoder.load_state_dict(torch.load(predir))
+            encoder.load_state_dict(torch.load(predir, map_location=lambda storage, loc: storage))
             encoder = list(encoder.children())[0]
         self.conv1 = nn.Sequential(*encoder[:5])
         self.conv2 = encoder[5]
@@ -217,51 +217,28 @@ class Unet(nn.Module):
         for epoch in range(epochs):
             print('Epoch {}/{}'.format(epoch, epochs - 1))
             print('-' * 10)
-            start_time = time.time()
-            running_loss = 0.0
-            running_iou = 0.0
-            scheduler.step()
-            self.train()  # Set model to training mode
-
-            reader_cnt = 1
-            for ftr, lbl in reader['train']:
-                reader_cnt += 1
-                step += 1
-
-                ftr = ftr.to(device)
-                lbl = torch.squeeze(lbl, dim=1).long().to(device)
-                pred = self.forward(ftr)
-
-                # zero the parameter gradients
-                optm.zero_grad()
-
-                # loss = criterion(pred, lbl)
-                loss = criterion(pred, lbl)
-                iou = iou_pytorch(pred, lbl)
-
-                # backward + optimize
-                loss.backward()
-                optm.step()
-
-                running_loss = running_loss * (reader_cnt - 1) / reader_cnt + loss.item() / reader_cnt
-                running_iou = running_iou * (reader_cnt - 1) / reader_cnt + iou.item() / reader_cnt
-                if reader_cnt % verb_step == 0:
-                    writer.add_scalar('loss_train', loss.item(), step)
-                    writer.add_scalar('iou_train', iou.item(), step)
-                    elapsed = time.time() - start_time
-                    print('Epoch {}, train Step:{} Loss: {:.4f}, IoU: {:.4f}, Duration: {:.0f}m {:.0f}s'.format(
-                        epoch, reader_cnt, loss.item(), iou.item(), elapsed // 60, elapsed % 60))
+            # train the model
+            step = self.run('train', epoch, step, verb_step, device, scheduler, label_color_dict, rev_transform,
+                            reader, optm, criterion, writer)
 
             # validate on the model
-            self.validate(epoch, scheduler, label_color_dict, rev_transform, reader, optm, criterion, writer)
+            with torch.no_grad():
+                step = self.run('valid', epoch, step, verb_step, device, scheduler, label_color_dict, rev_transform,
+                                reader, optm, criterion, writer)
 
             if epoch % save_epoch == 0:
                 torch.save(self.state_dict(), os.path.join(save_dir, 'model_{}.pt'.format(epoch)))
 
-    def validate(self, epoch, scheduler, label_color_dict, rev_transform, reader, optm, criterion, writer):
+    def run(self, phase, epoch, step, verb_step, device, scheduler, label_color_dict, rev_transform, reader, optm,
+            criterion, writer):
         """
-        Do validation, this has to be in a seperate function to avoid unnecessary memory usage
+        Either train or validate the model, if validate, this function should be wrapped with torch.no_grad() to prevent
+        back propagation
+        :param phase: either 'train' or 'valid
         :param epoch: the current epoch number
+        :param step: the step counter should be returned to update the variable
+        :param verb_step: #steps to print progress message
+        :param device: which GPU device to run the model
         :param scheduler: learning rate manager, created by lr_scheduler in PyTorch
         :param label_color_dict: colormap dictionary for visualizing prediction map in tensorboard
         :param rev_transform: reverse transform for visualizing images in tensorboard
@@ -274,20 +251,36 @@ class Unet(nn.Module):
         start_time = time.time()
         running_loss = 0.0
         running_iou = 0.0
-        with torch.no_grad():
-            reader_cnt = 1
-            for ftr, lbl in reader['valid']:
-                reader_cnt += 1
-                ftr = ftr.to(device)
-                lbl = torch.squeeze(lbl, dim=1).long().to(device)
-                pred = self.forward(ftr)
-                # zero the parameter gradients
-                optm.zero_grad()
-                # loss = criterion(pred, lbl)
-                loss = criterion(pred, lbl)
-                iou = iou_pytorch(pred, lbl)
-                running_loss = running_loss * (reader_cnt - 1) / reader_cnt + loss.item() / reader_cnt
-                running_iou = running_iou * (reader_cnt - 1) / reader_cnt + iou.item() / reader_cnt
+        ftr, lbl, pred = None, None, None
+        if phase == 'train':
+            scheduler.step()
+            self.train()  # Set model to training mode
+        reader_cnt = 1
+        for ftr, lbl in reader['valid']:
+            reader_cnt += 1
+            if phase == 'train':
+                step += 1
+            ftr = ftr.to(device)
+            lbl = torch.squeeze(lbl, dim=1).long().to(device)
+            pred = self.forward(ftr)
+            # zero the parameter gradients
+            optm.zero_grad()
+            # loss = criterion(pred, lbl)
+            loss = criterion(pred, lbl)
+            iou = iou_pytorch(pred, lbl)
+            if phase == 'train':
+                # backward + optimize
+                loss.backward()
+                optm.step()
+            running_loss = running_loss * (reader_cnt - 1) / reader_cnt + loss.item() / reader_cnt
+            running_iou = running_iou * (reader_cnt - 1) / reader_cnt + iou.item() / reader_cnt
+            if phase == 'train' and reader_cnt % verb_step == 0:
+                    writer.add_scalar('loss_train', loss.item(), step)
+                    writer.add_scalar('iou_train', iou.item(), step)
+                    elapsed = time.time() - start_time
+                    print('Epoch {}, train Step:{} Loss: {:.4f}, IoU: {:.4f}, Duration: {:.0f}m {:.0f}s'.format(
+                        epoch, reader_cnt, loss.item(), iou.item(), elapsed // 60, elapsed % 60))
+        if phase == 'valid':
             for img_cnt in range(ftr.shape[0]):
                 lbl_img = self.mask_to_rgb(lbl[img_cnt], label_color_dict)
                 pred_img = self.mask_to_rgb(torch.argmax(pred[img_cnt].cpu(), dim=0), label_color_dict)
@@ -302,6 +295,7 @@ class Unet(nn.Module):
             elapsed = time.time() - start_time
             print('Epoch {}, valid Step:{} Loss: {:.4f}, IoU: {:.4f}, Duration: {:.0f}m {:.0f}s'.format(
                 epoch, reader_cnt, running_loss, running_iou, elapsed // 60, elapsed % 60))
+        return step
 
     def eval_tile(self, img, input_size, batch_size, pad, device, transforms):
         self.eval()
@@ -322,6 +316,7 @@ class Unet(nn.Module):
 
 
 class UFER(nn.Module):
+    # TODO this should work with the ufer repo
     def __init__(self, encoder_name):
         super(UFER, self).__init__()
         encoder_name = misc_utils.stem_string(encoder_name)

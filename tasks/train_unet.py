@@ -32,7 +32,7 @@ INIT_LR_ENCODER = 1e-4
 INIT_LR_DECODER = 1e-4
 MILESTONES = '40'
 DROP_RATE = 0.1
-EPOCHS = 40
+EPOCHS = 2
 SAVE_DIR = r'/home/lab/Documents/bohao/code/mrs/model/log_pre'
 SAVE_EPOCH = 5
 PREDIR = r'/home/lab/Documents/bohao/code/ufers/model/log4/model_140.pt'
@@ -137,7 +137,7 @@ def main(flags):
 
     # train the model
     start_time = time.time()
-    model.train_model(device=device, epochs=flags.epochs, alpha=flags.alpha, optm=optm, criterion=criterion,
+    model.train_model(device=device, epochs=flags.epochs, optm=optm, criterion=loss_function,
                       scheduler=scheduler, reader=reader, save_dir=flags.save_dir, summary_path=flags.log_dir,
                       label_color_dict=label_color_dict, rev_transform=inv_normalize, save_epoch=flags.save_epoch)
     duration = time.time() - start_time
