@@ -23,7 +23,7 @@ from mrs_utils import metric_utils
 
 
 DATA_FILE = r'/hdd/mrs/inria/file_list.txt'
-BATCH_SIZE = 8
+BATCH_SIZE = 16
 GPU = 0
 ENCODER_NAME = 'res101'
 DECODER_NAME = 'unet'
