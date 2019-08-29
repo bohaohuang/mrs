@@ -10,6 +10,7 @@ import timeit
 # Libs
 import os
 import torch
+import torchvision
 from torch import nn
 from torchsummary import summary
 
@@ -30,8 +31,12 @@ def write_and_print(writer, phase, current_epoch, total_epoch, loss_dict, s_time
     """
     loss_str = '[{}] Epoch: {}/{} '.format(phase, current_epoch, total_epoch)
     for loss_name, loss_value in loss_dict.items():
-        writer.add_scalar('data/{}_{}_epoch'.format(phase, loss_name), loss_value, current_epoch)
-        loss_str += '{}: {:.3f} '.format(loss_name, loss_value)
+        if loss_name == 'image':
+            grid = torchvision.utils.make_grid(loss_value)
+            writer.add_image('image/{}_epoch'.format(phase), grid, current_epoch)
+        else:
+            writer.add_scalar('data/{}_{}_epoch'.format(phase, loss_name), loss_value, current_epoch)
+            loss_str += '{}: {:.3f} '.format(loss_name, loss_value)
     print(loss_str)
     stop_time = timeit.default_timer()
     print('Execution time: {}\n'.format(str(stop_time - s_time)))
@@ -61,9 +66,25 @@ def network_summary(network, input_size, **kwargs):
     :return:
     """
     net = network(**kwargs)
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    net = net.to(device)
-    summary(net, input_size)
+    summary(net, input_size, device='cpu')
+
+
+def load_epoch(save_dir, resume_epoch, model, optm):
+    """
+    Load model from a snapshot, this function can be used to resume training
+    :param save_dir: directory that saved the model
+    :param resume_epoch: the epoch number to continue training
+    :param model: the model created by classes defined in network/
+    :param optm: a torch optimizer
+    :return:
+    """
+    checkpoint = torch.load(
+        os.path.join(save_dir, 'epoch-' + str(resume_epoch - 1) + '.pth.tar'),
+        map_location=lambda storage, loc: storage)  # Load all tensors onto the CPU
+    print("Initializing weights from: {}...".format(
+        os.path.join(save_dir, 'epoch-' + str(resume_epoch - 1) + '.pth.tar')))
+    model.load_state_dict(checkpoint['state_dict'])
+    optm.load_state_dict(checkpoint['opt_dict'])
 
 
 def load(model, model_path, relax_load=False):

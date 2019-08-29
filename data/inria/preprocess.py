@@ -57,15 +57,13 @@ def patch_inria(data_dir, save_dir, patch_size, pad, overlap):
     :return:
     """
     # create folders and files
-    save_dir = os.path.join(save_dir, 'inria')
-    misc_utils.make_dir_if_not_exist(save_dir)
     patch_dir = os.path.join(save_dir, 'patches')
     misc_utils.make_dir_if_not_exist(patch_dir)
     record_file_train = open(os.path.join(save_dir, 'file_list_train.txt'), 'w+')
     record_file_valid = open(os.path.join(save_dir, 'file_list_valid.txt'), 'w+')
     # get rgb and gt files
-    for city_name in tqdm(SAVE_CITY, position=1):
-        for tile_id in tqdm(range(1, 37), position=2):
+    for city_name in tqdm(SAVE_CITY, desc='City-wise'):
+        for tile_id in tqdm(range(1, 37), desc='Tile-wise', leave=False):
             rgb_filename = os.path.join(data_dir, 'image', '{}{}.tif'.format(city_name, tile_id))
             gt_filename = os.path.join(data_dir, 'truth', '{}{}.tif'.format(city_name, tile_id))
             for rgb_patch, gt_patch, y, x in patch_tile(rgb_filename, gt_filename, patch_size, pad, overlap):
@@ -85,7 +83,7 @@ if __name__ == '__main__':
     ps = 572
     pd = 92
     ol = 184
-    save_dir = os.path.join(r'/hdd/mrs', 'ps{}_pd{}_ol'.format(ps, pd, ol))
+    save_dir = os.path.join(r'/hdd/mrs/inria', 'ps{}_pd{}_ol'.format(ps, pd, ol))
     misc_utils.make_dir_if_not_exist(save_dir)
     patch_inria(data_dir=r'/media/ei-edl01/data/remote_sensing_data/inria',
                 save_dir=save_dir,

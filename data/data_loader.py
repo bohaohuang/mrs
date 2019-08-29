@@ -16,6 +16,19 @@ from mrs_utils import misc_utils
 
 class RSDataLoader(data.Dataset):
     def __init__(self, parent_path, file_list, transforms=None):
+        """
+        A data reader for the remote sensing dataset
+        The dataset storage structure should be like
+        /parent_path
+            /patches
+                img0.png
+                img1.png
+            file_list.txt
+        Normally the downloaded remote sensing dataset needs to be preprocessed
+        :param parent_path: path to a preprocessed remote sensing dataset
+        :param file_list: a text file where each row contains rgb and gt files separated by space
+        :param transforms: albumentation transforms
+        """
         self.file_list = misc_utils.load_file(file_list)
         self.parent_path = parent_path
         self.transforms = transforms

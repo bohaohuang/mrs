@@ -7,9 +7,13 @@
 import os
 
 # Libs
-import torch
 import numpy as np
+
+# Pytorch
+import torch
+from torch import nn
 from torch.autograd import Variable
+
 
 # Own modules
 from mrs_utils import misc_utils
@@ -73,6 +77,90 @@ class WeightedJaccardCriterion(object):
 
     def __call__(self, pred, lbl):
         return weighted_jaccard_loss(pred, lbl, self.criterion, self.alpha, self.delta)
+
+
+class LossClass(nn.Module):
+    """
+    The base class of loss metrics, all loss metrics should inherit from this class
+    This class contains a function that defines how loss is computed (def forward) and a loss tracker that keeps
+    updating the loss within an epoch
+    """
+    def __init__(self):
+        super(LossClass, self).__init__()
+        self.loss = 0
+        self.cnt = 0
+
+    def forward(self, pred, lbl):
+        raise NotImplementedError
+
+    def update(self, loss, size):
+        """
+        Update the current loss tracker
+        :param loss: the computed loss
+        :param size: #elements in the batch
+        :return:
+        """
+        self.loss += loss.item() * size
+        self.cnt += 1
+
+    def reset(self):
+        """
+        Reset the loss tracker
+        :return:
+        """
+        self.loss = 0
+        self.cnt = 0
+
+    def get_loss(self):
+        """
+        Get mean loss within this epoch
+        :return:
+        """
+        return self.loss / self.cnt
+
+
+class CrossEntropyLoss(LossClass):
+    """
+    Cross entropy loss function used in training
+    """
+    def __init__(self):
+        super(CrossEntropyLoss, self).__init__()
+        self.name = 'xent'
+        self.criterion = nn.CrossEntropyLoss()
+
+    def forward(self, pred, lbl):
+        if len(lbl.shape) == 4 and lbl.shape[1] == 1:
+            lbl = lbl[:, 0, :, :]
+        return self.criterion(pred, lbl)
+
+
+class IoU(LossClass):
+    """
+    IoU metric that is not differentiable in training
+    """
+    def __init__(self):
+        super(IoU, self).__init__()
+        self.name = 'IoU'
+        self.numerator = 0
+        self.denominator = 0
+
+    def forward(self, pred, lbl):
+        truth = lbl.flatten().float()
+        _, pred = torch.max(pred[:, :, :, :], 1)
+        pred = pred.flatten().float()
+        intersect = truth * pred
+        return torch.sum(intersect == 1), torch.sum(truth + pred >= 1)
+
+    def update(self, loss, size):
+        self.numerator += loss[0].item() * size
+        self.denominator += loss[1].item() * size
+
+    def reset(self):
+        self.numerator = 0
+        self.denominator = 0
+
+    def get_loss(self):
+        return self.numerator / self.denominator
 
 
 def iou_metric(truth, pred, divide=False):

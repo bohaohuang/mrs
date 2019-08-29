@@ -36,7 +36,7 @@ class Base(nn.Module):
         :return:
         """
         for m in network_utils.iterate_sublayers(self):
-            if isinstance(mm, nn.Conv2d):
+            if isinstance(m, nn.Conv2d):
                 torch.nn.init.xavier_uniform(m.weight)
                 torch.nn.init.xavier_uniform(m.bias)
 
@@ -47,8 +47,6 @@ class Base(nn.Module):
         :param kwargs:
         :return:
         """
-        if len(learn_rate) > 1:
-            learn_rate = learn_rate[0]
         return [{'params': self.parameters(), 'lr': learn_rate}]
 
     def step(self, **kwargs):

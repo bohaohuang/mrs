@@ -82,9 +82,15 @@ def change_channel_order(data, to_channel_last=True):
     :return: the channel switched data
     """
     if to_channel_last:
-        return np.rollaxis(data, 0, 3)
+        if len(data.shape) == 3:
+            return np.rollaxis(data, 0, 3)
+        else:
+            return np.rollaxis(data, 1, 4)
     else:
-        return np.rollaxis(data, 2, 0)
+        if len(data.shape) == 3:
+            return np.rollaxis(data, 2, 0)
+        else:
+            return np.rollaxis(data, 3, 1)
 
 
 def visualize(rgb, gt, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.255)):
@@ -113,7 +119,3 @@ def visualize(rgb, gt, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.255)):
     plt.imshow(gt[:, :, 0].astype(np.uint8))
     plt.tight_layout()
     plt.show()
-
-
-if __name__ == '__main__':
-    pass

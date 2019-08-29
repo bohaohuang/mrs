@@ -15,11 +15,16 @@ from torchsummary import summary
 # Own modules
 
 
-def set_gpu(gpu):
-    # os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
-    # os.environ['CUDA_VISIBLE_DEVICES'] = '{}'.format(gpu)
-    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+def set_gpu(gpu, enable_benchmark=True):
+    """
+    Set which gpu to use, also return True as indicator for parallel model if multi-gpu selected
+    :param gpu: which gpu to use, could a a string with device ids separated by ','
+    :param enable_benchmark: if True, will let CUDNN find optimal set of algorithms for input configuration
+    :return: device instance
+    """
     device = torch.device('cuda:{}'.format(gpu))
+    print('Device being used: {}'.format(device))
+    torch.backends.cudnn.benchmark = enable_benchmark
     return device
 
 
@@ -91,7 +96,7 @@ def load_file(file_name, **kwargs):
         raise IOError('Problem loading {}'.format(file_name))
 
 
-def save_file(file_name, data, **kwargs):
+def save_file(file_name, data, fmt='%.8e', sort_keys=True, indent=4):
     """
     Save data file of given path, use numpy.load if it is in .npy format,
     otherwise use pickle or imageio
@@ -109,9 +114,9 @@ def save_file(file_name, data, **kwargs):
             with open(file_name, 'w') as f:
                 f.writelines(data)
         elif file_name[-3:] == 'csv':
-            np.savetxt(file_name, data, delimiter=',', fmt=kwargs['fmt'])
+            np.savetxt(file_name, data, delimiter=',', fmt=fmt)
         elif file_name[-4:] == 'json':
-            json.dump(data, open(file_name, 'w'))
+            json.dump(data, open(file_name, 'w'), sort_keys=sort_keys, indent=indent)
         else:
             data = Image.fromarray(data.astype(np.uint8))
             data.save(file_name)
@@ -218,3 +223,27 @@ def set_random_seed(seed_):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     np.random.seed(seed_)
+
+
+def args_getter(inspect_class):
+    """
+    Inspect parameters inside a class
+    :param inspect_class: the class to be inspected
+    :return: a dict of key value pairs of all parameters in this class
+    """
+    params = {}
+    for k, v in inspect_class.__dict__.items():
+        if not k.startswith('__'):
+            params[k] = v
+    return params
+
+
+def args_writer(file_name, inspect_class):
+    """
+    Save parameters inside a class into json file
+    :param file_name: path to the file to be saved
+    :param inspect_class: the class which parameters are going to be saved
+    :return:
+    """
+    params = args_getter(inspect_class)
+    save_file(file_name, params, sort_keys=True, indent=4)
