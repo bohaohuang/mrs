@@ -25,7 +25,6 @@ class Args:
         self.learn_rate_decoder = 1e-4
         self.decay_rate = 0.1
         self.finetune_dir = None
-        self.margin = 0
         self.bp_loss_idx = 0
         self.input_size = (572, 572)
 
@@ -40,7 +39,7 @@ class Args:
         if self.ds_name == 'inria':
             self.num_classes = 2
             self.data_dir = r'/hdd/mrs/inria/ps572_pd92_ol/patches'
-            self.train_file = r'/hdd/mrs/inria/ps572_pd92_ol/file_list_train.txt'
-            self.valid_file = r'/hdd/mrs/inria/ps572_pd92_ol/file_list_valid.txt'
+            self.train_file = r'/hdd/mrs/inria/ps572_pd92_ol/toy_file_list_train.txt'
+            self.valid_file = r'/hdd/mrs/inria/ps572_pd92_ol/toy_file_list_valid.txt'
         else:
             raise NotImplementedError('Dataset: {} is not supported'.format(self.ds_name))

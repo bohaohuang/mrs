@@ -4,6 +4,7 @@
 
 
 # Built-in
+import os
 
 # Libs
 import numpy as np
@@ -11,6 +12,7 @@ import matplotlib.pyplot as plt
 from torchvision import transforms
 
 # Own modules
+from mrs_utils import misc_utils
 
 
 def make_grid(tile_size, patch_size, overlap):
@@ -119,3 +121,27 @@ def visualize(rgb, gt, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.255)):
     plt.imshow(gt[:, :, 0].astype(np.uint8))
     plt.tight_layout()
     plt.show()
+
+
+def create_toy_set(data_dir, train_file='file_list_train.txt', valid_file='file_list_valid.txt',
+                   n_train=0.2, n_valid=0.2, random_seed=1):
+    np.random.seed(random_seed)
+    train_list = misc_utils.load_file(os.path.join(data_dir, train_file))
+    valid_list = misc_utils.load_file(os.path.join(data_dir, valid_file))
+    origin_train_len = len(train_list)
+    origin_valid_len = len(valid_list)
+    if n_train < 1:
+        n_train = int(origin_train_len * n_train)
+    if n_valid < 1:
+        n_valid = int(origin_valid_len * n_valid)
+
+    n_train_select = np.sort(np.random.choice(origin_train_len, n_train, replace=False))
+    n_valid_select = np.sort(np.random.choice(origin_valid_len, n_valid, replace=False))
+    train_select = [train_list[a] for a in n_train_select]
+    valid_select = [valid_list[a] for a in n_valid_select]
+    misc_utils.save_file(os.path.join(data_dir, 'toy_'+train_file), train_select)
+    misc_utils.save_file(os.path.join(data_dir, 'toy_'+valid_file), valid_select)
+
+
+if __name__ == '__main__':
+    create_toy_set(r'/hdd/mrs/inria/ps572_pd92_ol')

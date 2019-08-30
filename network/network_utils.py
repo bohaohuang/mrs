@@ -3,12 +3,15 @@ This file defines commonly used functions for using networks
 """
 
 # Built-in
+import os
 import copy
 import timeit
 
 
 # Libs
-import os
+import numpy as np
+
+# PyTorch
 import torch
 import torchvision
 from torch import nn
@@ -16,6 +19,8 @@ from torchsummary import summary
 
 
 # Own modules
+from data import patch_extractor, data_utils
+from mrs_utils import misc_utils, metric_utils
 
 
 def write_and_print(writer, phase, current_epoch, total_epoch, loss_dict, s_time):
@@ -163,3 +168,50 @@ def load(model, model_path, relax_load=False):
 
             print('{:.2f}% of the model loaded from the pretrained'.format(len(pretrained_state)/len(self_params)*100))
             model.load_state_dict(pretrained_state, strict=False)
+
+
+class Evaluator:
+    def __init__(self, ds_name, data_dir, tsfm, device):
+        ds_name = misc_utils.stem_string(ds_name)
+        self.tsfm = tsfm
+        self.device = device
+        if ds_name == 'inria':
+            from data.inria import preprocess
+            self.rgb_files, self.lbl_files = preprocess.get_images(data_dir)
+            assert len(self.rgb_files) == len(self.lbl_files)
+            self.truth_val = 255
+
+    def evaluate(self, model, patch_size, overlap):
+        iou_a, iou_b = 0, 0
+        for rgb_file, lbl_file in zip(self.rgb_files, self.lbl_files):
+            # read data
+            rgb = misc_utils.load_file(rgb_file)
+            lbl = misc_utils.load_file(lbl_file)
+
+            # evaluate on tiles
+            tile_dim = rgb.shape[:2]
+            tile_dim_pad = [tile_dim[0]+2*model.lbl_margin, tile_dim[1]+2*model.lbl_margin]
+            grid_list = patch_extractor.make_grid(tile_dim_pad, patch_size, overlap)
+            tile_preds = []
+            for patch in patch_extractor.patch_block(rgb, model.lbl_margin, grid_list, patch_size, False):
+                for tsfm in self.tsfm:
+                    tsfm_image = tsfm(image=patch)
+                    patch = tsfm_image['image']
+                patch = torch.unsqueeze(patch, 0).to(self.device)
+                pred = model.forward(patch).detach().cpu().numpy()
+                tile_preds.append(data_utils.change_channel_order(pred, True)[0, :, :, :])
+            # stitch back to tiles
+            tile_preds = patch_extractor.unpatch_block(
+                np.array(tile_preds),
+                tile_dim_pad,
+                patch_size,
+                tile_dim,
+                [patch_size[0]-2*model.lbl_margin, patch_size[1]-2*model.lbl_margin],
+                overlap=2*model.lbl_margin
+            )
+            tile_preds = np.argmax(tile_preds, -1)
+            a, b = metric_utils.iou_metric(lbl/self.truth_val, tile_preds)
+            print('{}: IoU={:.2f}'.format(os.path.splitext(os.path.basename(lbl_file))[0], a/b*100))
+            iou_a += a
+            iou_b += b
+        print('Overall: IoU={:.2f}'.format(iou_a/iou_b*100))

@@ -89,8 +89,8 @@ def train_model(args, device):
             else:
                 model.eval()
 
-            loss_dict = model.step(train_val_loaders[phase], device, optm, phase, criterions, args.margin,
-                                   args.bp_loss_idx, True, inv_mean, inv_std)
+            loss_dict = model.step(train_val_loaders[phase], device, optm, phase, criterions,
+                                   args.bp_loss_idx, True, mean, std)
             network_utils.write_and_print(writer, phase, epoch, args.epochs, loss_dict, start_time)
 
         # save the model

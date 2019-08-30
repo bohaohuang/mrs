@@ -120,7 +120,7 @@ class UNet(base_model.Base):
         Initialize the Unet model
         :param sfn: the start filter number, following blocks have n*sfn number of filters
         :param n_class: the number of class
-        :param encoder_name: name of the encoder, could be 'base', 
+        :param encoder_name: name of the encoder, could be 'base',
         """
         super(UNet, self).__init__()
         self.sfn = sfn
@@ -131,6 +131,7 @@ class UNet(base_model.Base):
             self.margins = [4, 16, 40, 88]
             self.decode_in_chans = [self.sfn*16, self.sfn*8, self.sfn*4, self.sfn*2]
             self.decode_out_chans = [self.sfn*8, self.sfn*4, self.sfn*2, self.sfn]
+            self.lbl_margin = 92
         else:
             raise NotImplementedError('Encoder architecture not supported')
         self.decoder = UnetDecoder(self.decode_in_chans, self.decode_out_chans, self.margins, self.n_class)
@@ -141,7 +142,7 @@ class UNet(base_model.Base):
         pred = self.decoder(ftr, layers)
         return pred
 
-    def step(self, data_loader, device, optm, phase, criterions, margin=0, bp_loss_idx=0, save_image=True,
+    def step(self, data_loader, device, optm, phase, criterions, bp_loss_idx=0, save_image=True,
              mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
         loss_dict = {}
         for img_cnt, (image, label) in enumerate(tqdm(data_loader, desc='{}'.format(phase))):
@@ -158,8 +159,8 @@ class UNet(base_model.Base):
 
             # loss
             # crop margin if necessary & reduce channel dimension
-            if margin > 0:
-                label = label[:, :, margin:-margin, margin:-margin]
+            if self.lbl_margin > 0:
+                label = label[:, :, self.lbl_margin:-self.lbl_margin, self.lbl_margin:-self.lbl_margin]
             for c_cnt, c in enumerate(criterions):
                 loss = c(pred, label)
                 if phase == 'train' and c_cnt == bp_loss_idx:
@@ -168,7 +169,9 @@ class UNet(base_model.Base):
                 c.update(loss, image.size(0))
 
             if save_image and img_cnt == 0:
-                img_image = image.detach().cpu().numpy()[:, :, margin:-margin, margin:-margin]
+                img_image = image.detach().cpu().numpy()
+                if self.lbl_margin > 0:
+                    img_image = img_image[:,:, self.lbl_margin: -self.lbl_margin, self.lbl_margin: -self.lbl_margin]
                 lbl_image = label.cpu().numpy()
                 pred_image = pred.detach().cpu().numpy()
                 banner = vis_utils.make_tb_image(img_image, lbl_image, pred_image, self.n_class, mean, std)

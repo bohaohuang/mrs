@@ -104,7 +104,7 @@ def unpatch_block(blocks, tile_dim, patch_size, tile_dim_output=None, patch_size
     :param tile_dim: input tile dimension, if padding exits should be h+2*pad, w+2*pad
     :param patch_size: input patch size
     :param tile_dim_output: output tile dimension
-    :param patch_size_output: output patch dimension, if shrinking exits, should be h-2*pd, w-2*pad
+    :param patch_size_output: output patch dimension, if shrinking exits, should be h-2*pad, w-2*pad
     :param overlap: overlap of adjacent patches
     :return:
     """

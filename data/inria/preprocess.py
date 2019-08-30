@@ -79,6 +79,19 @@ def patch_inria(data_dir, save_dir, patch_size, pad, overlap):
     record_file_valid.close()
 
 
+def get_images(data_dir, city_ids=tuple(range(5)), tile_ids=tuple(range(1, 6))):
+    rgb_files = []
+    gt_files = []
+    for city_name in [CITY_NAMES[i] for i in city_ids]:
+        for tile_id in tile_ids:
+            rgb_filename = os.path.join(data_dir, 'image', '{}{}.tif'.format(city_name, tile_id))
+            gt_filename = os.path.join(data_dir, 'truth', '{}{}.tif'.format(city_name, tile_id))
+            if city_name in VAL_CITY and tile_id in VAL_IDS:
+                rgb_files.append(rgb_filename)
+                gt_files.append(gt_filename)
+    return rgb_files, gt_files
+
+
 if __name__ == '__main__':
     ps = 572
     pd = 92

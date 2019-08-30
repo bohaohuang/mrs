@@ -16,6 +16,7 @@ from network import network_utils
 
 class Base(nn.Module):
     def __init__(self):
+        self.lbl_margin = 0
         super(Base, self).__init__()
 
     def forward(self, *inputs_):
