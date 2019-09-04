@@ -29,7 +29,7 @@ def create_model(args):
         if args.encoder_name == 'base':
             model = unet.UNet(sfn=args.sfn, n_class=args.num_classes, encoder_name=args.encoder_name)
             args.margin = 92
-        if args.encoder_name in ['vgg16', 'vgg']:
+        elif args.encoder_name in ['vgg16', 'vgg']:
             model = unet.UNet(n_class=args.num_classes, encoder_name=args.encoder_name)
             args.margin = 0
         else:
