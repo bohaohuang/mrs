@@ -32,10 +32,15 @@ def train_model(args, device):
     :return:
     """
     model = network_io.create_model(args)
-    train_params = model.set_train_params((args.learn_rate_encoder, args.learn_rate_decoder))
     log_dir = os.path.join(args.save_dir, 'log')
     writer = SummaryWriter(log_dir=log_dir)
     writer.add_graph(model, torch.rand(1, 3, *args.input_size))
+    if args.parallel:
+        if torch.cuda.device_count() > 1:
+            print("Let's use", torch.cuda.device_count(), "GPUs!")
+        model.encoder = nn.DataParallel(model.encoder)
+        model.decoder = nn.DataParallel(model.decoder)
+    train_params = model.set_train_params((args.learn_rate_encoder, args.learn_rate_decoder))
 
     # make optimizer
     optm = optim.SGD(train_params, lr=args.learn_rate_encoder, momentum=0.9, weight_decay=5e-4)
@@ -110,7 +115,8 @@ def main():
     # settings
     cfg = config.Args()
     # set gpu to use
-    device = misc_utils.set_gpu(cfg.gpu)
+    device, parallel = misc_utils.set_gpu(cfg.gpu)
+    cfg.parallel = parallel
     # set random seed
     misc_utils.set_random_seed(cfg.random_seed)
     # make training directory

@@ -25,7 +25,7 @@ GT_EXT = '_GT.tif'
 
 
 def main():
-    device = misc_utils.set_gpu(GPU)
+    device, _ = misc_utils.set_gpu(GPU)
 
     # init model
     args = network_io.load_config(MODEL_DIR)

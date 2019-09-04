@@ -93,10 +93,10 @@ def get_images(data_dir, city_ids=tuple(range(5)), tile_ids=tuple(range(1, 6))):
 
 
 if __name__ == '__main__':
-    ps = 572
-    pd = 92
-    ol = 184
-    save_dir = os.path.join(r'/hdd/mrs/inria', 'ps{}_pd{}_ol'.format(ps, pd, ol))
+    ps = 512
+    pd = 0
+    ol = 0
+    save_dir = os.path.join(r'/hdd/mrs/inria', 'ps{}_pd{}_ol{}'.format(ps, pd, ol))
     misc_utils.make_dir_if_not_exist(save_dir)
     patch_inria(data_dir=r'/media/ei-edl01/data/remote_sensing_data/inria',
                 save_dir=save_dir,

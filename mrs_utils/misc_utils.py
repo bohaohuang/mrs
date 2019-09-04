@@ -22,10 +22,17 @@ def set_gpu(gpu, enable_benchmark=True):
     :param enable_benchmark: if True, will let CUDNN find optimal set of algorithms for input configuration
     :return: device instance
     """
-    device = torch.device('cuda:{}'.format(gpu))
-    print('Device being used: {}'.format(device))
+    if len(str(gpu)) > 1:
+        os.environ["CUDA_VISIBLE_DEVICES"] = gpu
+        parallel = True
+        device = torch.device("cuda:{}".format(','.join([str(a) for a in range(len(gpu.split(',')))])))
+        print("Devices being used:", device)
+    else:
+        parallel = False
+        device = torch.device("cuda:{}".format(gpu))
+        print("Device being used:", device)
     torch.backends.cudnn.benchmark = enable_benchmark
-    return device
+    return device, parallel
 
 
 def make_dir_if_not_exist(dir_path):
