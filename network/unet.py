@@ -114,11 +114,41 @@ class UnetVGG16Encoder(nn.Module):
         return results[::-1]
 
 
+class UnetRes50Encoder(nn.Module):
+    """
+    This module is a VGG16 network as the encoder of the Unet
+    """
+    def __init__(self, pretrained=True):
+        super(UnetRes50Encoder, self).__init__()
+        self.res50 = models.resnet50(pretrained)
+        self.conv1 = nn.Sequential(*list(self.res50.children())[:3])
+        self.pool1 = list(self.res50.children())[3]
+        self.conv2 = nn.Sequential(*self.res50.layer1[:-1])
+        self.pool2 = self.res50.layer1[-1]
+        self.conv3 = nn.Sequential(*self.res50.layer2[:-1])
+        self.pool3 = self.res50.layer2[-1]
+        self.conv4 = nn.Sequential(*self.res50.layer3[:-1])
+        self.pool4 = self.res50.layer3[-1]
+        self.conv5 = nn.Sequential(*self.res50.layer4[:-1])
+
+    def forward(self, x):
+        layer0 = self.conv1(x)
+        x = self.pool1(layer0)
+        layer1 = self.conv2(x)
+        x = self.pool2(layer1)
+        layer2 = self.conv3(x)
+        x = self.pool3(layer2)
+        layer3 = self.conv4(x)
+        x = self.pool4(layer3)
+        layer4 = self.conv5(x)
+        return layer4, layer3, layer2, layer1, layer0
+
+
 class UnetDecoder(nn.Module):
     """
     This module is the original decoder in the Unet
     """
-    def __init__(self, in_chans, out_chans, margins, n_class, conv_chan=None, pad=0):
+    def __init__(self, in_chans, out_chans, margins, n_class, conv_chan=None, pad=0, up_sample=0):
         super(UnetDecoder, self).__init__()
         assert len(in_chans) == len(out_chans) == len(margins)
         self.uc = []
@@ -128,10 +158,13 @@ class UnetDecoder(nn.Module):
             self.uc.append(UpSampleConv(i, o, m, c, pad))
         self.uc = nn.ModuleList(self.uc)
         self.classify = nn.Conv2d(out_chans[-1], n_class, kernel_size=(3, 3), padding=(1, 1))
+        self.up_sample = up_sample
 
     def forward(self, ftr, layers):
         for l, uc in zip(layers, self.uc):
             ftr = uc(l, ftr)
+        if self.up_sample > 0:
+            ftr = F.upsample(ftr,scale_factor=self.up_sample)
         return self.classify(ftr)
 
 
@@ -160,6 +193,7 @@ class UNet(base_model.Base):
             self.lbl_margin = 92
             conv_chan = None
             pad = 0
+            up_sample = 0
         elif self.encoder_name in ['vgg16', 'vgg']:
             self.encoder = UnetVGG16Encoder(pretrained)
             self.margins = [0, 0, 0, 0]
@@ -168,10 +202,21 @@ class UNet(base_model.Base):
             self.lbl_margin = 0
             conv_chan = [768, 512, 256, 128]
             pad = 1
+            up_sample = 0
+        elif self.encoder_name in ['res50', 'resnet50']:
+            self.encoder = UnetRes50Encoder(pretrained)
+            self.margins = [0, 0, 0, 0]
+            filter_nums = [2048, 1024, 512, 256, 64]
+            self.decode_in_chans = filter_nums[:-1]
+            self.decode_out_chans = filter_nums[1:]
+            self.lbl_margin = 0
+            conv_chan = [2048, 1024, 512, 192]
+            pad = 1
+            up_sample = 2
         else:
             raise NotImplementedError('Encoder architecture not supported')
         self.decoder = UnetDecoder(self.decode_in_chans, self.decode_out_chans, self.margins, self.n_class,
-                                   conv_chan, pad)
+                                   conv_chan, pad, up_sample)
 
     def forward(self, x):
         x = self.encoder(x)
@@ -227,4 +272,6 @@ class UNet(base_model.Base):
 
 if __name__ == '__main__':
     from network import network_utils
-    network_utils.network_summary(UNet, (3, 572, 572), sfn=32, n_class=2, encoder_name='base')
+    network_utils.network_summary(UNet, (3, 512, 512), sfn=32, n_class=2, encoder_name='res50')
+
+    # UnetRes50Encoder()

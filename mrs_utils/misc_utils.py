@@ -7,7 +7,10 @@ from functools import wraps
 
 # Libs
 import torch
+import scipy.signal
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 from PIL import Image
 from skimage import io
 from torchsummary import summary
@@ -254,3 +257,32 @@ def args_writer(file_name, inspect_class):
     """
     params = args_getter(inspect_class)
     save_file(file_name, params, sort_keys=True, indent=4)
+
+
+def read_tensorboard_csv(file, field='Value', smooth=True, window_size=11, order=2):
+    """
+    Read values from tensorboard csv files, perform savgol smoothing if user specified
+    :param file: the csv file downloaded from the tensorboard
+    :param field: the name of the column in the csv file to be read
+    :param smooth: if True, perform savgol smoothing on the read data
+    :param window_size: window size of the savgol filter
+    :param order: order of the savgol filter
+    :return: data read from the csv file w/o smoothing
+    """
+    df = pd.read_csv(file, skipinitialspace=True, usecols=['Step', field])
+    if smooth:
+        value = scipy.signal.savgol_filter(np.array(df[field]), window_size, order)
+    else:
+        value = np.array(df[field])
+    step = np.array(df['Step'])
+    return step, value
+
+
+def get_default_colors():
+    """
+    Get plt default colors
+    :return: a list of rgb colors
+    """
+    prop_cycle = plt.rcParams['axes.prop_cycle']
+    colors = prop_cycle.by_key()['color']
+    return colors

@@ -124,7 +124,7 @@ def visualize(rgb, gt, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.255)):
 
 
 def create_toy_set(data_dir, train_file='file_list_train.txt', valid_file='file_list_valid.txt',
-                   n_train=0.2, n_valid=0.2, random_seed=1):
+                   n_train=0.2, n_valid=0.2, random_seed=1, move_dir=None):
     np.random.seed(random_seed)
     train_list = misc_utils.load_file(os.path.join(data_dir, train_file))
     valid_list = misc_utils.load_file(os.path.join(data_dir, valid_file))
@@ -142,6 +142,26 @@ def create_toy_set(data_dir, train_file='file_list_train.txt', valid_file='file_
     misc_utils.save_file(os.path.join(data_dir, 'toy_'+train_file), train_select)
     misc_utils.save_file(os.path.join(data_dir, 'toy_'+valid_file), valid_select)
 
+    if move_dir:
+        from shutil import copyfile
+        # need to move data to a new directory
+        print('Moving toy dataset into {} ...'.format(move_dir))
+        misc_utils.make_dir_if_not_exist(move_dir)
+        patch_dir = os.path.join(move_dir, 'patches')
+        misc_utils.make_dir_if_not_exist(patch_dir)
+        misc_utils.save_file(os.path.join(move_dir, train_file), train_select)
+        misc_utils.save_file(os.path.join(move_dir, valid_file), valid_select)
+
+        for item in train_select:
+            rgb, lbl = item.strip().split(' ')
+            copyfile(os.path.join(data_dir, 'patches', rgb), os.path.join(patch_dir, rgb))
+            copyfile(os.path.join(data_dir, 'patches', lbl), os.path.join(patch_dir, lbl))
+
+        for item in valid_select:
+            rgb, lbl = item.strip().split(' ')
+            copyfile(os.path.join(data_dir, 'patches', rgb), os.path.join(patch_dir, rgb))
+            copyfile(os.path.join(data_dir, 'patches', lbl), os.path.join(patch_dir, lbl))
+
 
 if __name__ == '__main__':
-    create_toy_set(r'/hdd/mrs/inria/ps572_pd92_ol')
+    create_toy_set(r'/hdd/mrs/inria/ps512_pd0_ol', move_dir='/hdd/mrs/inria/toyset')

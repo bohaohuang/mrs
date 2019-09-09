@@ -181,8 +181,11 @@ class Evaluator:
             assert len(self.rgb_files) == len(self.lbl_files)
             self.truth_val = 255
 
-    def evaluate(self, model, patch_size, overlap):
+    def evaluate(self, model, patch_size, overlap, pred_dir=None, report_dir=None):
         iou_a, iou_b = 0, 0
+        report = []
+        if pred_dir:
+            misc_utils.make_dir_if_not_exist(pred_dir)
         for rgb_file, lbl_file in zip(self.rgb_files, self.lbl_files):
             # read data
             rgb = misc_utils.load_file(rgb_file)
@@ -211,7 +214,15 @@ class Evaluator:
             )
             tile_preds = np.argmax(tile_preds, -1)
             a, b = metric_utils.iou_metric(lbl/self.truth_val, tile_preds)
-            print('{}: IoU={:.2f}'.format(os.path.splitext(os.path.basename(lbl_file))[0], a/b*100))
+            file_name = os.path.splitext(os.path.basename(lbl_file))[0]
+            print('{}: IoU={:.2f}'.format(file_name, a/b*100))
+            report.append('{},{},{},{}\n'.format(file_name, a, b, a/b*100))
             iou_a += a
             iou_b += b
+            if pred_dir:
+                misc_utils.save_file(os.path.join(pred_dir, '{}.png'.format(file_name)), tile_preds*self.truth_val)
         print('Overall: IoU={:.2f}'.format(iou_a/iou_b*100))
+        report.append('Overall,{},{},{}\n'.format(iou_a, iou_b, iou_a/iou_b*100))
+        if report_dir:
+            misc_utils.make_dir_if_not_exist(report_dir)
+            misc_utils.save_file(os.path.join(report_dir, 'result.txt'), report)
