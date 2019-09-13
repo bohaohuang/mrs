@@ -16,7 +16,7 @@ from torch.autograd import Variable
 from torch.nn import functional as F
 
 # Own modules
-from network import base_model
+from network import base_model, backbones
 from mrs_utils import misc_utils, vis_utils
 
 
@@ -34,6 +34,18 @@ class PSPVGG16Encoder(nn.Module):
 
     def forward(self, x):
         return self.vgg16(x)
+
+
+class PSPResEncoder(nn.Module):
+    """
+    This module is a VGG16 network as the encoder of the Unet
+    """
+    def __init__(self, pretrained=True):
+        super(PSPResEncoder, self).__init__()
+        self.res50 = getattr(backbones, 'resnet34')(pretrained)
+
+    def forward(self, x):
+        return self.res50(x)
 
 
 class PSPDecoder(nn.Module):
@@ -106,6 +118,9 @@ class PSPNet(base_model.Base):
         self.encoder_name = misc_utils.stem_string(encoder_name)
         if self.encoder_name in ['vgg16', 'vgg']:
             self.encoder = PSPVGG16Encoder(pretrained)
+        elif self.encoder_name in ['res50', 'resnet50']:
+            self.encoder = getattr(backbones, 'resnet50')(pretrained)
+            self.encoder.out_chan = 512
         else:
             raise NotImplementedError('Encoder architecture not supported')
         self.decoder = PSPDecoder(n_class, self.encoder.out_chan, out_chan, bin_sizes, drop_rate)
@@ -157,6 +172,6 @@ class PSPNet(base_model.Base):
 
 
 if __name__ == '__main__':
-    vgg16 = PSPNet(2)
+    vgg16 = PSPResEncoder(pretrained=True)
     from torchsummary import summary
     summary(vgg16, (3, 512, 512), device='cpu')
