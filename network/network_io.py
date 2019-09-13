@@ -9,11 +9,10 @@ import os
 # Libs
 
 # Pytorch
-from torch import nn
 
 # Own modules
 import config
-from network import unet, network_utils
+from network import unet, pspnet, network_utils
 from mrs_utils import misc_utils, metric_utils
 
 
@@ -38,6 +37,8 @@ def create_model(args):
         else:
             raise NotImplementedError('Encoder structure {} for {} is not supported'.format(
                 args.encoder_name, args.decoder_name))
+    elif args.decoder_name in ['psp', 'pspnet']:
+        model = pspnet.PSPNet(n_class=args.num_classes, encoder_name=args.encoder_name)
     else:
         raise NotImplementedError('Decoder structure {} is not supported'.format(args.decoder_name))
     return model

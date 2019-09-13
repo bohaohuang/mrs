@@ -164,7 +164,7 @@ class UnetDecoder(nn.Module):
         for l, uc in zip(layers, self.uc):
             ftr = uc(l, ftr)
         if self.up_sample > 0:
-            ftr = F.upsample(ftr,scale_factor=self.up_sample)
+            ftr = F.interpolate(ftr, scale_factor=self.up_sample, mode='bilinear')
         return self.classify(ftr)
 
 
