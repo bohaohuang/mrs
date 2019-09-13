@@ -42,7 +42,7 @@ class PSPResEncoder(nn.Module):
     """
     def __init__(self, pretrained=True):
         super(PSPResEncoder, self).__init__()
-        self.res50 = getattr(backbones, 'resnet34')(pretrained)
+        self.res50 = getattr(backbones, 'resnet50')(pretrained)
 
     def forward(self, x):
         return self.res50(x)
@@ -120,7 +120,7 @@ class PSPNet(base_model.Base):
             self.encoder = PSPVGG16Encoder(pretrained)
         elif self.encoder_name in ['res50', 'resnet50']:
             self.encoder = getattr(backbones, 'resnet50')(pretrained)
-            self.encoder.out_chan = 512
+            self.encoder.out_chan = 2048
         else:
             raise NotImplementedError('Encoder architecture not supported')
         self.decoder = PSPDecoder(n_class, self.encoder.out_chan, out_chan, bin_sizes, drop_rate)
@@ -172,6 +172,6 @@ class PSPNet(base_model.Base):
 
 
 if __name__ == '__main__':
-    vgg16 = PSPResEncoder(pretrained=True)
+    vgg16 = PSPNet(2, encoder_name='res50')
     from torchsummary import summary
     summary(vgg16, (3, 512, 512), device='cpu')
