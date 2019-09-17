@@ -92,6 +92,19 @@ def load_epoch(save_dir, resume_epoch, model, optm):
     optm.load_state_dict(checkpoint['opt_dict'])
 
 
+def sequential_load(target, source_state):
+    new_dict = {}
+    odict_list = list(target.items())
+    for k, v in odict_list:
+        if 'num_batches_tracked' in k:
+            # no need to load this
+            odict_list.remove((k, v))
+    odict = {k: v for k, v in odict_list}
+    for (k1, v1), (k2, v2) in zip(odict.items(), source_state.items()):
+        new_dict[k1] = v2
+    return new_dict
+
+
 def flex_load(model_dict, ckpt_dict, relax_load=False):
     # try to load model with relaxed naming restriction
     ckpt_params = [a for a in ckpt_dict.keys()]

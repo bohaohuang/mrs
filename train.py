@@ -24,7 +24,7 @@ from mrs_utils import misc_utils
 from network import network_utils, network_io
 
 
-def train_model(args, device):
+def train_model(args, device, parallel):
     """
     The function to train the model
     :param args: the class carries configuration parameters defined in config.py
@@ -35,7 +35,7 @@ def train_model(args, device):
     log_dir = os.path.join(args.save_dir, 'log')
     writer = SummaryWriter(log_dir=log_dir)
     writer.add_graph(model, torch.rand(1, 3, *args.input_size))
-    if args.parallel:
+    if parallel:
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
         model.encoder = nn.DataParallel(model.encoder)
@@ -116,7 +116,6 @@ def main():
     cfg = config.Args()
     # set gpu to use
     device, parallel = misc_utils.set_gpu(cfg.gpu)
-    cfg.parallel = parallel
     # set random seed
     misc_utils.set_random_seed(cfg.random_seed)
     # make training directory
@@ -124,7 +123,7 @@ def main():
     misc_utils.args_writer(os.path.join(cfg.save_dir, 'config.json'), cfg)
 
     # train the model
-    train_model(cfg, device)
+    train_model(cfg, device, parallel)
 
 
 if __name__ == '__main__':

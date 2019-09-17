@@ -2,12 +2,12 @@
 ## TODO
 - [ ] Encoder Structures:
     - [X] VGG
-    - [ ] ResNet50
-    - [ ] ResNet101
+    - [X] ResNet
+    - [ ] Check flex loading function
 - [ ] Decoder Structures:
     - [X] UNet
     - [ ] LinkNet
-    - [ ] PSPNet
+    - [X] PSPNet
 - [ ] Different Losses:
     - [X] Xent
     - [ ] Jaccard Approximation
