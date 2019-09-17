@@ -27,16 +27,8 @@ def create_model(args):
     if args.decoder_name == 'unet':
         if args.encoder_name == 'base':
             model = unet.UNet(sfn=args.sfn, n_class=args.num_classes, encoder_name=args.encoder_name)
-            args.margin = model.lbl_margin
-        elif args.encoder_name in ['vgg16', 'vgg']:
-            model = unet.UNet(n_class=args.num_classes, encoder_name=args.encoder_name)
-            args.margin = model.lbl_margin
-        elif args.encoder_name in ['res50', 'resnet50']:
-            model = unet.UNet(n_class=args.num_classes, encoder_name=args.encoder_name)
-            args.margin = model.lbl_margin
         else:
-            raise NotImplementedError('Encoder structure {} for {} is not supported'.format(
-                args.encoder_name, args.decoder_name))
+            model = unet.UNet(n_class=args.num_classes, encoder_name=args.encoder_name)
     elif args.decoder_name in ['psp', 'pspnet']:
         model = pspnet.PSPNet(n_class=args.num_classes, encoder_name=args.encoder_name)
     else:
