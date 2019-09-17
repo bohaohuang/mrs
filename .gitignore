@@ -11,6 +11,7 @@ model/log/
 *.pt
 model/log_pre/
 .idea/
+config.py
 
 # C extensions
 *.so

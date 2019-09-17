@@ -34,7 +34,10 @@ def train_model(args, device, parallel):
     model = network_io.create_model(args)
     log_dir = os.path.join(args.save_dir, 'log')
     writer = SummaryWriter(log_dir=log_dir)
-    writer.add_graph(model, torch.rand(1, 3, *args.input_size))
+    try:
+        writer.add_graph(model, torch.rand(1, 3, *args.input_size))
+    except RuntimeError:
+        print('Warning: could not write graph to tensorboard, this might be a bug in tensorboardX')
     if parallel:
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")

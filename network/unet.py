@@ -155,7 +155,7 @@ class UNet(base_model.Base):
             self.lbl_margin = 0
             conv_chan = [d_in//2+d_out for (d_in, d_out) in zip(self.decode_in_chans, self.decode_out_chans)]
             pad = 1
-            up_sample = 0
+            up_sample = 2
         self.decoder = UnetDecoder(self.decode_in_chans, self.decode_out_chans, self.margins, self.n_class,
                                    conv_chan, pad, up_sample)
 
