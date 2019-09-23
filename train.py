@@ -87,6 +87,7 @@ def train_model(args, device, parallel):
     train_val_loaders = {'train': train_loader, 'valid': valid_loader}
 
     # train the model
+    loss_dict = {}
     for epoch in range(args.resume_epoch, args.epochs):
         # each epoch has a training and validation step
         for phase in ['train', 'valid']:
@@ -111,6 +112,15 @@ def train_model(args, device, parallel):
                 'loss': loss_dict,
             }, save_name)
             print('Saved model at {}'.format(save_name))
+    # save model one last time
+    save_name = os.path.join(args.save_dir, 'epoch-{}.pth.tar'.format(args.epochs))
+    torch.save({
+        'epoch': args.epochs,
+        'state_dict': model.state_dict(),
+        'opt_dict': optm.state_dict(),
+        'loss': loss_dict,
+    }, save_name)
+    print('Saved model at {}'.format(save_name))
     writer.close()
 
 

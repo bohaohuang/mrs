@@ -3,17 +3,22 @@
 - [ ] Encoder Structures:
     - [X] VGG
     - [X] ResNet
-    - [ ] Check flex loading function
+    - [ ] DenseNet
+    - [ ] SqueezeNet
+    - [ ] InceptionNet
 - [ ] Decoder Structures:
     - [X] UNet
-    - [ ] LinkNet
+    - [ ] LinkNet (https://github.com/e-lab/pytorch-linknet)
     - [X] PSPNet
+    - [ ] DeepLabV3
 - [ ] Different Losses:
     - [X] Xent
     - [ ] Jaccard Approximation
-    - [ ] Lovasz softmax
+    - [ ] Lovasz softmax (https://github.com/bermanmaxim/LovaszSoftmax/tree/master/pytorch)
 - [X] Multi GPU Training
 - [ ] Evaluation
     - [X] Dataset Evaluator
     - [ ] Evaluate Report & Prediction Map
 - [X] Toy Dataset
+- [ ] Config as json file
+- [ ] Check flex loading function
