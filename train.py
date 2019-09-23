@@ -5,7 +5,10 @@
 
 # Built-in
 import os
+import json
+import shutil
 import timeit
+import argparse
 
 # Libs
 import albumentations as A
@@ -18,10 +21,30 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 
 # Own modules
-import config
 from data import data_loader
 from mrs_utils import misc_utils
 from network import network_utils, network_io
+
+CONFIG_FILE = 'config.json'
+
+
+def read_config():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', default=CONFIG_FILE, type=str, help='config file location')
+    flags = parser.parse_args()
+    config_file = flags.config
+    flags = json.load(open(flags.config))
+
+    decay_str = '_'.join(str(ds) for ds in eval(flags['optimizer']['decay_step']))
+    dr_str = str(flags['optimizer']['decay_rate']).replace('.', 'p')
+    flags['save_dir'] = 'ec{}_dc{}_ds{}_lre{}_lrd{}_ep{}_bs{}_ds{}_dr{}'.format(
+        flags['encoder_name'], flags['decoder_name'], flags['dataset']['ds_name'],
+        flags['optimizer']['learn_rate_encoder'], flags['optimizer']['learn_rate_decoder'],
+        flags['trainer']['epochs'], flags['dataset']['batch_size'], decay_str, dr_str)
+    flags['save_dir'] = os.path.join(flags['trainer']['save_root'], flags['save_dir'])
+    flags['config'] = config_file
+
+    return flags
 
 
 def train_model(args, device, parallel):
@@ -32,33 +55,35 @@ def train_model(args, device, parallel):
     :return:
     """
     model = network_io.create_model(args)
-    log_dir = os.path.join(args.save_dir, 'log')
+    log_dir = os.path.join(args['save_dir'], 'log')
     writer = SummaryWriter(log_dir=log_dir)
     try:
-        writer.add_graph(model, torch.rand(1, 3, *args.input_size))
+        writer.add_graph(model, torch.rand(1, 3, *eval(args['dataset']['input_size'])))
     except RuntimeError:
         print('Warning: could not write graph to tensorboard, this might be a bug in tensorboardX')
     if parallel:
-        if torch.cuda.device_count() > 1:
-            print("Let's use", torch.cuda.device_count(), "GPUs!")
         model.encoder = nn.DataParallel(model.encoder)
         model.decoder = nn.DataParallel(model.decoder)
-    train_params = model.set_train_params((args.learn_rate_encoder, args.learn_rate_decoder))
+        print('Parallel training mode enabled!')
+    train_params = model.set_train_params((args['optimizer']['learn_rate_encoder'],
+                                           args['optimizer']['learn_rate_decoder']))
 
     # make optimizer
-    optm = optim.SGD(train_params, lr=args.learn_rate_encoder, momentum=0.9, weight_decay=5e-4)
+    optm = optim.SGD(train_params, lr=args['optimizer']['learn_rate_encoder'], momentum=0.9, weight_decay=5e-4)
     criterions = network_io.create_loss(args)
-    scheduler = optim.lr_scheduler.MultiStepLR(optm, milestones=args.decay_step, gamma=args.decay_rate)
+    scheduler = optim.lr_scheduler.MultiStepLR(optm, milestones=eval(args['optimizer']['decay_step']),
+                                               gamma=args['optimizer']['decay_rate'])
 
     # if not resume, train from scratch
-    if args.resume_epoch == 0 and not args.finetune_dir:
-        print('Training decoder {} with encoder {} from scratch ...'.format(args.decoder_name, args.encoder_name))
-    elif args.resume_epoch == 0 and args.finetune_dir:
-        print('Finetuning model from {}'.format(args.finetune_dir))
-        network_utils.load(model, args.finetune_dir, relax_load=True)
+    if args['trainer']['resume_epoch'] == 0 and args['trainer']['finetune_dir'] == 'None':
+        print('Training decoder {} with encoder {} from scratch ...'.format(args['decoder_name'], args['encoder_name']))
+    elif args['trainer']['resume_epoch'] == 0 and args['trainer']['finetune_dir']:
+        print('Finetuning model from {}'.format(args['trainer']['finetune_dir']))
+        network_utils.load(model, args['trainer']['finetune_dir'], relax_load=True)
     else:
-        print('Resume training {} from epoch {} ...'.format(args.model_name, args.resume_epoch))
-        network_utils.load_epoch(args.save_dir, args.resume_epoch, model, optm)
+        print('Resume training decoder {} with encoder {} from epoch {} ...'.format(
+            args['decoder_name'], args['encoder_name'], args['trainer']['resume_epoch']))
+        network_utils.load_epoch(args['save_dir'], args['resume_epoch'], model, optm)
 
     # prepare training
     print('Total params: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1000000.0))
@@ -67,8 +92,8 @@ def train_model(args, device, parallel):
         c.to(device)
 
     # make data loader
-    mean = (0.485, 0.456, 0.406)
-    std = (0.229, 0.224, 0.225)
+    mean = eval(args['dataset']['mean'])
+    std = eval(args['dataset']['std'])
     tsfm_train = A.Compose([
         A.Flip(),
         A.RandomRotate90(),
@@ -79,16 +104,20 @@ def train_model(args, device, parallel):
         A.Normalize(mean=mean, std=std),
         ToTensor(sigmoid=False),
     ])
-    train_loader = DataLoader(data_loader.RSDataLoader(args.data_dir, args.train_file, transforms=tsfm_train),
-                              batch_size=args.batch_size, shuffle=True, num_workers=4)
-    valid_loader = DataLoader(data_loader.RSDataLoader(args.data_dir, args.valid_file, transforms=tsfm_valid),
-                              batch_size=args.batch_size, shuffle=False, num_workers=4)
-    print('Training model on the {} dataset'.format(args.ds_name))
+    train_loader = DataLoader(data_loader.RSDataLoader(args['dataset']['data_dir'], args['dataset']['train_file'],
+                                                       transforms=tsfm_train),
+                              batch_size=args['dataset']['batch_size'], shuffle=True,
+                              num_workers=args['dataset']['num_workers'])
+    valid_loader = DataLoader(data_loader.RSDataLoader(args['dataset']['data_dir'], args['dataset']['valid_file'],
+                                                       transforms=tsfm_valid),
+                              batch_size=args['dataset']['batch_size'], shuffle=False,
+                              num_workers=args['dataset']['num_workers'])
+    print('Training model on the {} dataset'.format(args['dataset']['ds_name']))
     train_val_loaders = {'train': train_loader, 'valid': valid_loader}
 
     # train the model
     loss_dict = {}
-    for epoch in range(args.resume_epoch, args.epochs):
+    for epoch in range(args['trainer']['resume_epoch'], args['trainer']['epochs']):
         # each epoch has a training and validation step
         for phase in ['train', 'valid']:
             start_time = timeit.default_timer()
@@ -99,29 +128,29 @@ def train_model(args, device, parallel):
                 model.eval()
 
             loss_dict = model.step(train_val_loaders[phase], device, optm, phase, criterions,
-                                   args.bp_loss_idx, True, mean, std)
-            network_utils.write_and_print(writer, phase, epoch, args.epochs, loss_dict, start_time)
+                                   args['trainer']['bp_loss_idx'], True, mean, std)
+            network_utils.write_and_print(writer, phase, epoch, args['trainer']['epochs'], loss_dict, start_time)
 
         # save the model
-        if epoch % args.save_epoch == (args.save_epoch - 1):
-            save_name = os.path.join(args.save_dir, 'epoch-{}.pth.tar'.format(epoch))
+        if epoch % args['trainer']['save_epoch'] == (args['trainer']['save_epoch'] - 1):
+            save_name = os.path.join(args['save_dir'], 'epoch-{}.pth.tar'.format(epoch))
             network_utils.save(model, epoch, optm, loss_dict, save_name)
     # save model one last time
-    save_name = os.path.join(args.save_dir, 'epoch-{}.pth.tar'.format(args.epochs))
-    network_utils.save(model, args.epochs, optm, loss_dict, save_name)
+    save_name = os.path.join(args['save_dir'], 'epoch-{}.pth.tar'.format(args['trainer']['epochs']))
+    network_utils.save(model, args['trainer']['epochs'], optm, loss_dict, save_name)
     writer.close()
 
 
 def main():
     # settings
-    cfg = config.Args()
+    cfg = read_config()
     # set gpu to use
-    device, parallel = misc_utils.set_gpu(cfg.gpu)
+    device, parallel = misc_utils.set_gpu(cfg['gpu'])
     # set random seed
-    misc_utils.set_random_seed(cfg.random_seed)
+    misc_utils.set_random_seed(cfg['random_seed'])
     # make training directory
-    misc_utils.make_dir_if_not_exist(cfg.save_dir)
-    misc_utils.args_writer(os.path.join(cfg.save_dir, 'config.json'), cfg)
+    misc_utils.make_dir_if_not_exist(cfg['save_dir'])
+    shutil.copy(cfg['config'], cfg['save_dir'])
 
     # train the model
     train_model(cfg, device, parallel)

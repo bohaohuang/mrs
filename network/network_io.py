@@ -11,7 +11,6 @@ import os
 # Pytorch
 
 # Own modules
-import config
 from network import unet, pspnet, network_utils
 from mrs_utils import misc_utils, metric_utils
 
@@ -22,17 +21,18 @@ def create_model(args):
     :param args: the configuration parameter class defined in config.py
     :return:
     """
-    args.encoder_name = misc_utils.stem_string(args.encoder_name)
-    args.decoder_name = misc_utils.stem_string(args.decoder_name)
-    if args.decoder_name == 'unet':
-        if args.encoder_name == 'base':
-            model = unet.UNet(sfn=args.sfn, n_class=args.num_classes, encoder_name=args.encoder_name)
+    args['encoder_name'] = misc_utils.stem_string(args['encoder_name'])
+    args['decoder_name'] = misc_utils.stem_string(args['decoder_name'])
+    if args['decoder_name'] == 'unet':
+        if args['encoder_name'] == 'base':
+            model = unet.UNet(sfn=args['sfn'], n_class=args['dataset']['class_num'],
+                              encoder_name=args['encoder_name'])
         else:
-            model = unet.UNet(n_class=args.num_classes, encoder_name=args.encoder_name)
-    elif args.decoder_name in ['psp', 'pspnet']:
-        model = pspnet.PSPNet(n_class=args.num_classes, encoder_name=args.encoder_name)
+            model = unet.UNet(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'])
+    elif args['decoder_name'] in ['psp', 'pspnet']:
+        model = pspnet.PSPNet(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'])
     else:
-        raise NotImplementedError('Decoder structure {} is not supported'.format(args.decoder_name))
+        raise NotImplementedError('Decoder structure {} is not supported'.format(args['decoder_name']))
     return model
 
 
@@ -43,13 +43,13 @@ def create_loss(args):
     :return:
     """
     criterions = []
-    for c_name in misc_utils.stem_string(args.criterion_name).split(','):
+    for c_name in misc_utils.stem_string(args['trainer']['criterion_name']).split(','):
         if c_name == 'xent':
             criterions.append(metric_utils.CrossEntropyLoss())
         elif c_name == 'iou':
             criterions.append(metric_utils.IoU())
         else:
-            raise NotImplementedError('Criterion type {} is not supported'.format(args.criterion_name))
+            raise NotImplementedError('Criterion type {} is not supported'.format(args['trainer']['criterion_name']))
     return criterions
 
 
@@ -62,8 +62,7 @@ def load_config(model_dir):
     :return: the parsed arguments
     """
     config_file = os.path.join(model_dir, 'config.json')
-    args = config.Args()
-    args.__dict__ = misc_utils.load_file(config_file)
+    args = misc_utils.load_file(config_file)
     return args
 
 

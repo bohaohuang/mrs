@@ -17,8 +17,8 @@ from network import network_io, network_utils
 
 # Settings
 GPU = 0
-MODEL_DIR = r'/hdd6/Models/mrs/dcc/ecvgg16_dcunet_dsinria_lre0.001_lrd0.001_ep100_bs5_sfn32_ds50_dr0p1'
-LOAD_EPOCH = 100
+MODEL_DIR = r'/hdd6/Models/mrs/mrs2/ecresnet50_dcunet_dsinria_lre0.001_lrd0.01_ep80_bs5_sfn32_ds50_dr0p1'
+LOAD_EPOCH = 80
 DATA_DIR = r'/media/ei-edl01/data/remote_sensing_data/inria'
 RGB_EXT = '_RGB.tif'
 GT_EXT = '_GT.tif'

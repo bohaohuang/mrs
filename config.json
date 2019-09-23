@@ -1,0 +1,33 @@
+{
+  "gpu": "0",
+  "encoder_name": "vgg16",
+  "decoder_name": "unet",
+  "random_seed": 1,
+  "dataset": {
+    "ds_name": "inria",
+    "input_size": "(512, 512)",
+    "class_num": 2,
+    "mean" : "(0.485, 0.456, 0.406)",
+    "std" : "(0.229, 0.224, 0.225)",
+    "data_dir": "/hdd/mrs/inria/ps512_pd0_ol0/patches",
+    "train_file": "/hdd/mrs/inria/ps512_pd0_ol0/file_list_train.txt",
+    "valid_file": "/hdd/mrs/inria/ps512_pd0_ol0/file_list_valid.txt",
+    "batch_size": 5,
+    "num_workers": 4
+  },
+  "optimizer": {
+    "learn_rate_encoder": 1e-3,
+    "learn_rate_decoder": 1e-3,
+    "decay_rate": 0.1,
+    "decay_step": "[2]"
+  },
+  "trainer": {
+    "criterion_name": "xent,iou",
+    "bp_loss_idx": 0,
+    "epochs": 5,
+    "save_epoch": 1,
+    "resume_epoch": 0,
+    "finetune_dir": "None",
+    "save_root": "/hdd6/Models/mrs/"
+  }
+}
