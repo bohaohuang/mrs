@@ -105,22 +105,10 @@ def train_model(args, device, parallel):
         # save the model
         if epoch % args.save_epoch == (args.save_epoch - 1):
             save_name = os.path.join(args.save_dir, 'epoch-{}.pth.tar'.format(epoch))
-            torch.save({
-                'epoch': epoch + 1,
-                'state_dict': model.state_dict(),
-                'opt_dict': optm.state_dict(),
-                'loss': loss_dict,
-            }, save_name)
-            print('Saved model at {}'.format(save_name))
+            network_utils.save(model, epoch, optm, loss_dict, save_name)
     # save model one last time
     save_name = os.path.join(args.save_dir, 'epoch-{}.pth.tar'.format(args.epochs))
-    torch.save({
-        'epoch': args.epochs,
-        'state_dict': model.state_dict(),
-        'opt_dict': optm.state_dict(),
-        'loss': loss_dict,
-    }, save_name)
-    print('Saved model at {}'.format(save_name))
+    network_utils.save(model, args.epochs, optm, loss_dict, save_name)
     writer.close()
 
 

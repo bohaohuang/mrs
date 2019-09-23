@@ -187,6 +187,25 @@ def load(model, model_path, relax_load=False):
         model.load_state_dict(pretrained_state, strict=False)
 
 
+def save(model, epochs, optm, loss_dict, save_name):
+    """
+    Save the model to given destination
+    :param model: the model to be saved
+    :param epochs: current epoch number
+    :param optm: optimizer
+    :param loss_dict: dictionary of current loss status
+    :param save_name: absolute path to the file to store the model
+    :return:
+    """
+    torch.save({
+        'epoch': epochs,
+        'state_dict': model.state_dict(),
+        'opt_dict': optm.state_dict(),
+        'loss': loss_dict,
+    }, save_name)
+    print('Saved model at {}'.format(save_name))
+
+
 class Evaluator:
     def __init__(self, ds_name, data_dir, tsfm, device):
         ds_name = misc_utils.stem_string(ds_name)
