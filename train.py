@@ -122,8 +122,8 @@ def train_model(args, device, parallel):
         for phase in ['train', 'valid']:
             start_time = timeit.default_timer()
             if phase == 'train':
-                scheduler.step()
                 model.train()
+                scheduler.step()
             else:
                 model.eval()
 

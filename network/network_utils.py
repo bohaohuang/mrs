@@ -105,7 +105,7 @@ def sequential_load(target, source_state):
     return new_dict
 
 
-def flex_load(model_dict, ckpt_dict, relax_load=False):
+def flex_load(model_dict, ckpt_dict, relax_load=False, disable_parallel=False):
     # try to load model with relaxed naming restriction
     ckpt_params = [a for a in ckpt_dict.keys()]
     self_params = [a for a in model_dict.keys()]
@@ -130,13 +130,22 @@ def flex_load(model_dict, ckpt_dict, relax_load=False):
     for mp in model_params:
         print('\t', mp)
 
-    if not relax_load:
+    if not relax_load and not disable_parallel:
         pretrained_state = {k: v for k, v in ckpt_dict.items() if k in model_dict and
                             v.size() == model_dict[k].size()}
-        if len(pretrained_state) == 0 and not relax_load:
+        if len(pretrained_state) == 0:
             raise ValueError('No parameter matches in the current model in pretrained model, please check '
                              'the model definition or enable relax_load')
         print('Try loading without those parameters')
+        return pretrained_state
+    elif disable_parallel:
+        pretrained_state = {k: v for k, v in ckpt_dict.items() if k.replace('module.', '') in model_dict and
+                            v.size() == model_dict[k.replace('module.', '')].size()}
+        if len(pretrained_state) == 0:
+            raise ValueError('No parameter matches in the current model in pretrained model, please check '
+                             'the model definition or enable relax_load')
+        print('Try loading without those parameters')
+        print('{:.2f}% of the model loaded from the pretrained'.format(len(pretrained_state) / len(self_params) * 100))
         return pretrained_state
     else:
         print('Try loading with relaxed naming rule:')
@@ -167,7 +176,7 @@ def flex_load(model_dict, ckpt_dict, relax_load=False):
         return pretrained_state
 
 
-def load(model, model_path, relax_load=False):
+def load(model, model_path, relax_load=False, disable_parallel=False):
     """
     Load the weights in the pretrained model directory, the order of loading method is as follows:
     1. Try load the exact name of tensors in the pretrained model file, if not all names are the same, try 2;
@@ -177,13 +186,15 @@ def load(model, model_path, relax_load=False):
     :param model_path: the path to the pretrained model, should be a .pth or equivalent file
     :param relax_load: if true, the model will be load by assuming there's a prefix in one model's tensor names if
                        necessary
+    :param disable_parallel: if true, the parameter name difference caused by using parallel model (module.) will be
+                             ignored
     :return:
     """
     checkpoint = torch.load(model_path, map_location=lambda storage, loc: storage)
     try:
         model.load_state_dict(checkpoint['state_dict'])
     except RuntimeError:
-        pretrained_state = flex_load(model.state_dict(), checkpoint['state_dict'], relax_load)
+        pretrained_state = flex_load(model.state_dict(), checkpoint['state_dict'], relax_load, disable_parallel)
         model.load_state_dict(pretrained_state, strict=False)
 
 
