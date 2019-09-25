@@ -48,6 +48,8 @@ def create_loss(args):
             criterions.append(metric_utils.CrossEntropyLoss())
         elif c_name == 'iou':
             criterions.append(metric_utils.IoU())
+        elif c_name == 'softiou':
+            criterions.append(metric_utils.SoftIoULoss())
         else:
             raise NotImplementedError('Criterion type {} is not supported'.format(args['trainer']['criterion_name']))
     return criterions

@@ -134,6 +134,22 @@ class CrossEntropyLoss(LossClass):
         return self.criterion(pred, lbl)
 
 
+class SoftIoULoss(LossClass):
+    """
+    Soft IoU loss that is differentiable
+    """
+    def __init__(self, delta=1e-12):
+        super(SoftIoULoss, self).__init__()
+        self.name = 'softIoU'
+        self.delta = delta
+
+    def forward(self, pred, lbl):
+        labels = make_one_hot(lbl)
+        inter_ = torch.sum(pred * labels)
+        union_ = torch.sum(pred + labels) - inter_
+        return 1 - torch.mean((inter_ + self.delta) / (union_ + self.delta))
+
+
 class IoU(LossClass):
     """
     IoU metric that is not differentiable in training

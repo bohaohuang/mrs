@@ -1,5 +1,5 @@
 # Models for Remote Sensing
-## TODO
+## TODOs
 - [ ] Encoder Structures:
     - [X] VGG
     - [X] ResNet
@@ -15,6 +15,7 @@
     - [X] Xent
     - [ ] Jaccard Approximation
     - [ ] Lovasz softmax (https://github.com/bermanmaxim/LovaszSoftmax/tree/master/pytorch)
+    - [ ] Weighted combination of arbitrary supported losses
 - [X] Multi GPU Training
 - [ ] Evaluation
     - [X] Dataset Evaluator
@@ -22,3 +23,5 @@
 - [X] Toy Dataset
 - [ ] Config as json file
 - [ ] Check flex loading function
+## Known Bugs
+- [ ] Unable to do model-wise data parallel
