@@ -16,8 +16,8 @@ from network import network_io, network_utils
 
 
 # Settings
-GPU = 0
-MODEL_DIR = r'/hdd6/Models/mrs/mrs2/ecresnet50_dcunet_dsinria_lre0.001_lrd0.01_ep80_bs5_sfn32_ds50_dr0p1'
+GPU = 1
+MODEL_DIR = r'/hdd6/Models/mrs/inria/ecresnet34_dcunet_dsinria_lre0.001_lrd0.001_ep80_bs5_ds50_dr0p1'
 LOAD_EPOCH = 80
 DATA_DIR = r'/media/ei-edl01/data/remote_sensing_data/inria'
 RGB_EXT = '_RGB.tif'
@@ -32,8 +32,8 @@ def main():
     args = network_io.load_config(MODEL_DIR)
     model = network_io.create_model(args)
     if LOAD_EPOCH:
-        args.epochs = LOAD_EPOCH
-    ckpt_dir = os.path.join(MODEL_DIR, 'epoch-{}.pth.tar'.format(args.epochs - 1))
+        args['trainer']['epochs'] = LOAD_EPOCH
+    ckpt_dir = os.path.join(MODEL_DIR, 'epoch-{}.pth.tar'.format(args['trainer']['epochs']))
     network_utils.load(model, ckpt_dir)
     print('Loaded from {}'.format(ckpt_dir))
     model.to(device)
@@ -46,7 +46,7 @@ def main():
         A.Normalize(mean=mean, std=std),
         ToTensor(sigmoid=False),
     ])
-    save_dir = os.path.join(r'/hdd/Results/mrs', os.path.basename(args.save_dir))
+    save_dir = os.path.join(r'/hdd/Results/mrs', os.path.basename(network_utils.unique_model_name(args)))
     evaluator = network_utils.Evaluator('inria', DATA_DIR, tsfm_valid, device)
     evaluator.evaluate(model, PATCHS_SIZE, 2*model.lbl_margin,
                        pred_dir=save_dir, report_dir=save_dir)

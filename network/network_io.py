@@ -36,7 +36,7 @@ def create_model(args):
     return model
 
 
-def create_loss(args):
+def create_loss(args, **kwargs):
     """
     Create loss based on configuration
     :param args: the configuration parameter class defined in config.py
@@ -49,7 +49,7 @@ def create_loss(args):
         elif c_name == 'iou':
             criterions.append(metric_utils.IoU())
         elif c_name == 'softiou':
-            criterions.append(metric_utils.SoftIoULoss())
+            criterions.append(metric_utils.SoftIoULoss(**kwargs))
         else:
             raise NotImplementedError('Criterion type {} is not supported'.format(args['trainer']['criterion_name']))
     return criterions

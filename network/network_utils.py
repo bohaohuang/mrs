@@ -217,6 +217,20 @@ def save(model, epochs, optm, loss_dict, save_name):
     print('Saved model at {}'.format(save_name))
 
 
+def unique_model_name(cfg):
+    """
+    Make a unique model name based on the config file arguments
+    :param cfg: config dictionary
+    :return: unique model string
+    """
+    decay_str = '_'.join(str(ds) for ds in eval(cfg['optimizer']['decay_step']))
+    dr_str = str(cfg['optimizer']['decay_rate']).replace('.', 'p')
+    return 'ec{}_dc{}_ds{}_lre{}_lrd{}_ep{}_bs{}_ds{}_dr{}'.format(
+        cfg['encoder_name'], cfg['decoder_name'], cfg['dataset']['ds_name'], cfg['optimizer']['learn_rate_encoder'],
+        cfg['optimizer']['learn_rate_decoder'], cfg['trainer']['epochs'], cfg['dataset']['batch_size'],
+        decay_str, dr_str)
+
+
 class Evaluator:
     def __init__(self, ds_name, data_dir, tsfm, device):
         ds_name = misc_utils.stem_string(ds_name)

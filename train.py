@@ -35,13 +35,7 @@ def read_config():
     config_file = flags.config
     flags = json.load(open(flags.config))
 
-    decay_str = '_'.join(str(ds) for ds in eval(flags['optimizer']['decay_step']))
-    dr_str = str(flags['optimizer']['decay_rate']).replace('.', 'p')
-    flags['save_dir'] = 'ec{}_dc{}_ds{}_lre{}_lrd{}_ep{}_bs{}_ds{}_dr{}'.format(
-        flags['encoder_name'], flags['decoder_name'], flags['dataset']['ds_name'],
-        flags['optimizer']['learn_rate_encoder'], flags['optimizer']['learn_rate_decoder'],
-        flags['trainer']['epochs'], flags['dataset']['batch_size'], decay_str, dr_str)
-    flags['save_dir'] = os.path.join(flags['trainer']['save_root'], flags['save_dir'])
+    flags['save_dir'] = os.path.join(flags['trainer']['save_root'], network_utils.unique_model_name(flags))
     flags['config'] = config_file
 
     return flags
@@ -70,7 +64,7 @@ def train_model(args, device, parallel):
 
     # make optimizer
     optm = optim.SGD(train_params, lr=args['optimizer']['learn_rate_encoder'], momentum=0.9, weight_decay=5e-4)
-    criterions = network_io.create_loss(args)
+    criterions = network_io.create_loss(args, device=device)
     scheduler = optim.lr_scheduler.MultiStepLR(optm, milestones=eval(args['optimizer']['decay_step']),
                                                gamma=args['optimizer']['decay_rate'])
 
@@ -150,7 +144,7 @@ def main():
     misc_utils.set_random_seed(cfg['random_seed'])
     # make training directory
     misc_utils.make_dir_if_not_exist(cfg['save_dir'])
-    shutil.copy(cfg['config'], cfg['save_dir'])
+    shutil.copyfile(cfg['config'], os.path.join(cfg['save_dir'], 'config.json'))
 
     # train the model
     train_model(cfg, device, parallel)

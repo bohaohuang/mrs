@@ -21,7 +21,8 @@
     - [X] Dataset Evaluator
     - [ ] Evaluate Report & Prediction Map
 - [X] Toy Dataset
-- [ ] Config as json file
-- [ ] Check flex loading function
+- [X] Config as json file
+- [X] Check flex loading function
+- [ ] Results visualization
 ## Known Bugs
 - [ ] Unable to do model-wise data parallel
