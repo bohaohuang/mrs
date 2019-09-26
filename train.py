@@ -53,7 +53,7 @@ def train_model(args, device, parallel):
     writer = SummaryWriter(log_dir=log_dir)
     try:
         writer.add_graph(model, torch.rand(1, 3, *eval(args['dataset']['input_size'])))
-    except RuntimeError:
+    except (RuntimeError, TypeError, AttributeError):
         print('Warning: could not write graph to tensorboard, this might be a bug in tensorboardX')
     if parallel:
         model.encoder = nn.DataParallel(model.encoder)
