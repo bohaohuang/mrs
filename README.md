@@ -13,13 +13,14 @@
     - [ ] DeepLabV3
 - [ ] Different Losses:
     - [X] Xent
-    - [ ] Jaccard Approximation
+    - [X] Jaccard Approximation
+    - [ ] Focal Loss
     - [ ] Lovasz softmax (https://github.com/bermanmaxim/LovaszSoftmax/tree/master/pytorch)
     - [ ] Weighted combination of arbitrary supported losses
 - [X] Multi GPU Training
 - [ ] Evaluation
     - [X] Dataset Evaluator
-    - [ ] Evaluate Report & Prediction Map
+    - [X] Evaluate Report & Prediction Map
 - [X] Toy Dataset
 - [X] Config as json file
 - [X] Check flex loading function

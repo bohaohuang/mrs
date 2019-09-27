@@ -11,7 +11,6 @@ from tqdm import tqdm
 # Pytorch
 import torch
 from torch import nn
-from torchvision import models
 from torch.autograd import Variable
 from torch.nn import functional as F
 

@@ -13,10 +13,10 @@ import numpy as np
 import torch
 from torch import nn
 from torch.autograd import Variable
+from torch.nn import functional as F
 
 
 # Own modules
-from mrs_utils import misc_utils
 
 
 def make_one_hot(labels, device, C=2):
@@ -137,18 +137,35 @@ class CrossEntropyLoss(LossClass):
 class SoftIoULoss(LossClass):
     """
     Soft IoU loss that is differentiable
+    This code comes from https://discuss.pytorch.org/t/one-hot-encoding-with-autograd-dice-loss/9781/5
     """
     def __init__(self, device, delta=1e-12):
         super(SoftIoULoss, self).__init__()
         self.name = 'softIoU'
-        self.delta = delta
         self.device = device
+        self.delta = delta
 
     def forward(self, pred, lbl):
-        labels = make_one_hot(lbl, self.device)
-        inter_ = torch.sum(pred * labels)
-        union_ = torch.sum(pred + labels) - inter_
-        return 1 - torch.mean((inter_ + self.delta) / (union_ + self.delta))
+        num_classes = pred.shape[1]
+        if num_classes == 1:
+            true_1_hot = torch.eye(num_classes + 1)[lbl.squeeze(1)].to(self.device)
+            true_1_hot = true_1_hot.permute(0, 3, 1, 2).float()
+            true_1_hot_f = true_1_hot[:, 0:1, :, :]
+            true_1_hot_s = true_1_hot[:, 1:2, :, :]
+            true_1_hot = torch.cat([true_1_hot_s, true_1_hot_f], dim=1)
+            pos_prob = torch.sigmoid(pred)
+            neg_prob = 1 - pos_prob
+            probas = torch.cat([pos_prob, neg_prob], dim=1)
+        else:
+            true_1_hot = torch.eye(num_classes)[lbl.squeeze(1)].to(self.device)
+            true_1_hot = true_1_hot.permute(0, 3, 1, 2).float()
+            probas = F.softmax(pred, dim=1)
+        true_1_hot = true_1_hot.type(pred.type())
+        dims = (0,) + tuple(range(2, lbl.ndimension()))
+        intersection = torch.sum(probas * true_1_hot, dims)
+        cardinality = torch.sum(probas + true_1_hot, dims)
+        dice_loss = (2. * intersection / (cardinality + self.delta)).mean()
+        return (1 - dice_loss)
 
 
 class IoU(LossClass):
