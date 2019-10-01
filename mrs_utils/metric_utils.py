@@ -138,6 +138,7 @@ class SoftIoULoss(LossClass):
     """
     Soft IoU loss that is differentiable
     This code comes from https://discuss.pytorch.org/t/one-hot-encoding-with-autograd-dice-loss/9781/5
+    Paper: http://campar.in.tum.de/pub/milletari2016Vnet/milletari2016Vnet.pdf
     """
     def __init__(self, device, delta=1e-12):
         super(SoftIoULoss, self).__init__()
