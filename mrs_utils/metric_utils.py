@@ -173,11 +173,12 @@ class IoU(LossClass):
     """
     IoU metric that is not differentiable in training
     """
-    def __init__(self):
+    def __init__(self, delta=1e-7):
         super(IoU, self).__init__()
         self.name = 'IoU'
         self.numerator = 0
         self.denominator = 0
+        self.delta = delta
 
     def forward(self, pred, lbl):
         truth = lbl.flatten().float()
@@ -195,7 +196,7 @@ class IoU(LossClass):
         self.denominator = 0
 
     def get_loss(self):
-        return self.numerator / self.denominator
+        return self.numerator / (self.denominator + self.delta)
 
 
 def iou_metric(truth, pred, divide=False):
