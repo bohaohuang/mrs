@@ -45,7 +45,11 @@ def create_loss(args, **kwargs):
     criterions = []
     for c_name in misc_utils.stem_string(args['trainer']['criterion_name']).split(','):
         if c_name == 'xent':
-            criterions.append(metric_utils.CrossEntropyLoss())
+            if 'class_weight' in kwargs:
+                class_weight = eval(kwargs['class_weight'])
+            else:
+                class_weight = (1, 1)
+            criterions.append(metric_utils.CrossEntropyLoss(class_weight))
         elif c_name == 'iou':
             criterions.append(metric_utils.IoU())
         elif c_name == 'softiou':

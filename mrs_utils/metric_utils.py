@@ -99,10 +99,10 @@ class CrossEntropyLoss(LossClass):
     """
     Cross entropy loss function used in training
     """
-    def __init__(self, class_weights=(1, 1)):
+    def __init__(self, class_weights=(1., 1.)):
         super(CrossEntropyLoss, self).__init__()
         self.name = 'xent'
-        class_weights = torch.tensor(class_weights)
+        class_weights = torch.tensor([float(a) for a in class_weights])
         self.criterion = nn.CrossEntropyLoss(class_weights)
 
     def forward(self, pred, lbl):
