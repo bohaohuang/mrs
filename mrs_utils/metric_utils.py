@@ -19,64 +19,40 @@ from torch.nn import functional as F
 # Own modules
 
 
-def make_one_hot(labels, device, C=2):
-    '''
-    Converts an integer label torch.autograd.Variable to a one-hot Variable.
-
-    Parameters
-    ----------
-    labels : torch.autograd.Variable of torch.cuda.LongTensor
-        N x 1 x H x W, where N is batch size.
-        Each value is an integer representing correct classification.
-    C : integer.
-        number of classes in labels.
-
-    Returns
-    -------
-    target : torch.autograd.Variable of torch.cuda.FloatTensor
-        N x C x H x W, where C is class number. One-hot encoded.
-    '''
-    one_hot = torch.FloatTensor(labels.size(0), C, labels.size(2), labels.size(3)).zero_().to(device)
-    target = one_hot.scatter_(1, labels.data, 1)
-    target = Variable(target)
-    return target
-
-
-def weighted_jaccard_loss(outputs, labels, criterion, alpha, delta=1e-12):
+class FocalLoss(nn.Module):
     """
-    Weighted jaccard loss and a criterion function of choice
-    :param outputs: predictions of shape C*H*W
-    :param labels: ground truth data of shape H*W
-    :param criterion: criterion function, could be cross entropy
-    :param alpha: weight on jaccard index function
-    :param delta: small value that avoid zero value in denominator
-    :return:
+    Focal loss: this code comes from
+    https://github.com/mbsariyildiz/focal-loss.pytorch/blob/6551bd3e433ce41020b6bc8d99221eb6cd10ae17/focalloss.py#L33
     """
-    #TODO this does not support multi-categorical loss yet
-    orig_loss = criterion(outputs, labels)
-    labels = make_one_hot(torch.unsqueeze(labels, dim=1))
-    inter_ = torch.sum(outputs * labels)
-    union_ = torch.sum(outputs + labels) - inter_
-    jaccard_loss = torch.mean((inter_ + delta) / (union_ + delta))
-    return alpha * (1 - jaccard_loss) + (1 - alpha) * orig_loss
-
-
-class WeightedJaccardCriterion(object):
-    """
-    Weighted Jaccard criterion function used in training
-    """
-    def __init__(self, alpha, criterion, delta=1e-12):
-        """
-        :param alpha: weight on jaccard index function
-        :param criterion: criterion function, could be cross entropy
-        :param delta: small value that avoid zero value in denominator
-        """
+    def __init__(self, gamma=0, alpha=None, size_average=True):
+        super(FocalLoss, self).__init__()
+        self.gamma = gamma
         self.alpha = alpha
-        self.criterion = criterion
-        self.delta = delta
+        if isinstance(alpha, (float, int)): self.alpha = torch.Tensor([alpha, 1 - alpha])
+        if isinstance(alpha, list): self.alpha = torch.Tensor(alpha)
+        self.size_average = size_average
 
-    def __call__(self, pred, lbl):
-        return weighted_jaccard_loss(pred, lbl, self.criterion, self.alpha, self.delta)
+    def forward(self, input, target):
+        if input.dim()>2:
+            input = input.view(input.size(0), input.size(1), -1)  # N,C,H,W => N,C,H*W
+            input = input.transpose(1, 2)                         # N,C,H*W => N,H*W,C
+            input = input.contiguous().view(-1, input.size(2))    # N,H*W,C => N*H*W,C
+        target = target.view(-1, 1)
+
+        logpt = F.log_softmax(input, dim=1)
+        logpt = logpt.gather(1,target)
+        logpt = logpt.view(-1)
+        pt = logpt.exp()
+
+        if self.alpha is not None:
+            if self.alpha.type() != input.data.type():
+                self.alpha = self.alpha.type_as(input.data)
+            at = self.alpha.gather(0, target.data.view(-1))
+            logpt = logpt * at
+
+        loss = -1 * (1 - pt)**self.gamma * logpt
+        if self.size_average: return loss.mean()
+        else: return loss.sum()
 
 
 class LossClass(nn.Module):
@@ -123,10 +99,11 @@ class CrossEntropyLoss(LossClass):
     """
     Cross entropy loss function used in training
     """
-    def __init__(self):
+    def __init__(self, class_weights=(1, 1)):
         super(CrossEntropyLoss, self).__init__()
         self.name = 'xent'
-        self.criterion = nn.CrossEntropyLoss()
+        class_weights = torch.tensor(class_weights)
+        self.criterion = nn.CrossEntropyLoss(class_weights)
 
     def forward(self, pred, lbl):
         if len(lbl.shape) == 4 and lbl.shape[1] == 1:

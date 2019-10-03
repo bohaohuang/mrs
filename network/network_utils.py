@@ -225,22 +225,28 @@ def unique_model_name(cfg):
     """
     decay_str = '_'.join(str(ds) for ds in eval(cfg['optimizer']['decay_step']))
     dr_str = str(cfg['optimizer']['decay_rate']).replace('.', 'p')
-    return 'ec{}_dc{}_ds{}_lre{}_lrd{}_ep{}_bs{}_ds{}_dr{}'.format(
+    return 'ec{}_dc{}_ds{}_lre{:.0e}_lrd{:.0e}_ep{}_bs{}_ds{}_dr{}'.format(
         cfg['encoder_name'], cfg['decoder_name'], cfg['dataset']['ds_name'], cfg['optimizer']['learn_rate_encoder'],
         cfg['optimizer']['learn_rate_decoder'], cfg['trainer']['epochs'], cfg['dataset']['batch_size'],
         decay_str, dr_str)
 
 
 class Evaluator:
-    def __init__(self, ds_name, data_dir, tsfm, device):
+    def __init__(self, ds_name, data_dir, tsfm, device, load_func=None, **kwargs):
         ds_name = misc_utils.stem_string(ds_name)
         self.tsfm = tsfm
         self.device = device
         if ds_name == 'inria':
             from data.inria import preprocess
-            self.rgb_files, self.lbl_files = preprocess.get_images(data_dir)
+            self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
             assert len(self.rgb_files) == len(self.lbl_files)
             self.truth_val = 255
+        elif load_func:
+            self.rgb_files, self.lbl_files = load_func(data_dir, **kwargs)
+            assert len(self.rgb_files) == len(self.lbl_files)
+            self.truth_val = 1
+        else:
+            raise NotImplementedError('Dataset {} is not supported')
 
     def evaluate(self, model, patch_size, overlap, pred_dir=None, report_dir=None):
         iou_a, iou_b = 0, 0
@@ -249,7 +255,7 @@ class Evaluator:
             misc_utils.make_dir_if_not_exist(pred_dir)
         for rgb_file, lbl_file in zip(self.rgb_files, self.lbl_files):
             # read data
-            rgb = misc_utils.load_file(rgb_file)
+            rgb = misc_utils.load_file(rgb_file)[:, :, :3]
             lbl = misc_utils.load_file(lbl_file)
 
             # evaluate on tiles

@@ -113,12 +113,11 @@ def visualize(rgb, gt, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.255)):
     rgb = inv_normalize(rgb)
     rgb, gt = rgb.numpy(), gt.numpy()
     rgb = change_channel_order(rgb, True)
-    gt = change_channel_order(gt, True)
     plt.figure(figsize=(10, 6))
     plt.subplot(121)
     plt.imshow((rgb*255).astype(np.uint8))
     plt.subplot(122)
-    plt.imshow(gt[:, :, 0].astype(np.uint8))
+    plt.imshow(gt.astype(np.uint8))
     plt.tight_layout()
     plt.show()
 

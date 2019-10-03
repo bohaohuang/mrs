@@ -12,7 +12,7 @@ import argparse
 
 # Libs
 import albumentations as A
-from albumentations.pytorch import ToTensor
+from albumentations.pytorch import ToTensorV2
 from tensorboardX import SummaryWriter
 
 # Pytorch
@@ -92,11 +92,11 @@ def train_model(args, device, parallel):
         A.Flip(),
         A.RandomRotate90(),
         A.Normalize(mean=mean, std=std),
-        ToTensor(sigmoid=False),
+        ToTensorV2(),
     ])
     tsfm_valid = A.Compose([
         A.Normalize(mean=mean, std=std),
-        ToTensor(sigmoid=False),
+        ToTensorV2(),
     ])
     train_loader = DataLoader(data_loader.RSDataLoader(args['dataset']['data_dir'], args['dataset']['train_file'],
                                                        transforms=tsfm_train),

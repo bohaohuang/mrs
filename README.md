@@ -25,5 +25,6 @@
 - [X] Config as json file
 - [X] Check flex loading function
 - [ ] Results visualization
+- [ ] Class weights on criterions
 ## Known Bugs
 - [ ] Unable to do model-wise data parallel

@@ -70,7 +70,7 @@ def patch_inria(data_dir, save_dir, patch_size, pad, overlap):
                 rgb_patchname = '{}{}_y{}x{}.jpg'.format(city_name, tile_id, int(y), int(x))
                 gt_patchname = '{}{}_y{}x{}.png'.format(city_name, tile_id, int(y), int(x))
                 misc_utils.save_file(os.path.join(patch_dir, rgb_patchname), rgb_patch.astype(np.uint8))
-                misc_utils.save_file(os.path.join(patch_dir, gt_patchname), gt_patch.astype(np.uint8))
+                misc_utils.save_file(os.path.join(patch_dir, gt_patchname), (gt_patch/255).astype(np.uint8))
                 if city_name in VAL_CITY and tile_id in VAL_IDS:
                     record_file_valid.write('{} {}\n'.format(rgb_patchname, gt_patchname))
                 else:

@@ -88,7 +88,7 @@ def make_tb_image(img, lbl, pred, n_class, mean, std, chanel_first=True):
     :return:
     """
     pred = np.argmax(pred, 1)
-    label_image = decode_label_map(data_utils.change_channel_order(lbl), n_class)
+    label_image = decode_label_map(lbl, n_class)
     pred_image = decode_label_map(pred, n_class)
     img_image = inv_normalize(data_utils.change_channel_order(img), mean, std) * 255
     banner = np.concatenate([img_image, label_image, pred_image], axis=2).astype(np.uint8)
