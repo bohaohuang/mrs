@@ -126,7 +126,7 @@ def train_model(args, device, parallel):
             network_utils.write_and_print(writer, phase, epoch, args['trainer']['epochs'], loss_dict, start_time)
 
         # save the model
-        if epoch % args['trainer']['save_epoch'] == (args['trainer']['save_epoch'] - 1):
+        if epoch % args['trainer']['save_epoch'] == 0 and epoch != 0:
             save_name = os.path.join(args['save_dir'], 'epoch-{}.pth.tar'.format(epoch))
             network_utils.save(model, epoch, optm, loss_dict, save_name)
     # save model one last time
