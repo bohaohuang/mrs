@@ -14,6 +14,7 @@ import numpy as np
 # PyTorch
 import torch
 import torchvision
+import torch.nn.functional as F
 from torch import nn
 from torchsummary import summary
 
@@ -248,12 +249,14 @@ class Evaluator:
         else:
             raise NotImplementedError('Dataset {} is not supported')
 
-    def evaluate(self, model, patch_size, overlap, pred_dir=None, report_dir=None):
+    def evaluate(self, model, patch_size, overlap, pred_dir=None, report_dir=None, save_conf=False):
         iou_a, iou_b = 0, 0
         report = []
         if pred_dir:
             misc_utils.make_dir_if_not_exist(pred_dir)
         for rgb_file, lbl_file in zip(self.rgb_files, self.lbl_files):
+            file_name = os.path.splitext(os.path.basename(lbl_file))[0]
+
             # read data
             rgb = misc_utils.load_file(rgb_file)[:, :, :3]
             lbl = misc_utils.load_file(lbl_file)
@@ -268,7 +271,7 @@ class Evaluator:
                     tsfm_image = tsfm(image=patch)
                     patch = tsfm_image['image']
                 patch = torch.unsqueeze(patch, 0).to(self.device)
-                pred = model.forward(patch).detach().cpu().numpy()
+                pred = F.softmax(model.forward(patch), 1).detach().cpu().numpy()
                 tile_preds.append(data_utils.change_channel_order(pred, True)[0, :, :, :])
             # stitch back to tiles
             tile_preds = patch_extractor.unpatch_block(
@@ -279,9 +282,10 @@ class Evaluator:
                 [patch_size[0]-2*model.lbl_margin, patch_size[1]-2*model.lbl_margin],
                 overlap=2*model.lbl_margin
             )
+            if save_conf:
+                misc_utils.save_file(os.path.join(pred_dir, '{}.npy'.format(file_name)), tile_preds[:, :, 1])
             tile_preds = np.argmax(tile_preds, -1)
             a, b = metric_utils.iou_metric(lbl/self.truth_val, tile_preds)
-            file_name = os.path.splitext(os.path.basename(lbl_file))[0]
             print('{}: IoU={:.2f}'.format(file_name, a/b*100))
             report.append('{},{},{},{}\n'.format(file_name, a, b, a/b*100))
             iou_a += a
