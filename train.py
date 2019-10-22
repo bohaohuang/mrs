@@ -9,6 +9,8 @@ import json
 import shutil
 import timeit
 import argparse
+import sys
+sys.path.append('/home/wh145/mrs/')
 
 # Libs
 import albumentations as A
