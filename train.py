@@ -25,7 +25,7 @@ from data import data_loader
 from mrs_utils import misc_utils
 from network import network_utils, network_io
 
-CONFIG_FILE = 'temp_config.json'
+CONFIG_FILE = 'config.json'
 
 
 def read_config():
@@ -90,14 +90,14 @@ def train_model(args, device, parallel):
     mean = eval(args['dataset']['mean'])
     std = eval(args['dataset']['std'])
     tsfm_train = A.Compose([
-        A.RandomCrop(512, 512),
+        # A.RandomCrop(512, 512),
         A.Flip(),
         A.RandomRotate90(),
         A.Normalize(mean=mean, std=std),
         ToTensorV2(),
     ])
     tsfm_valid = A.Compose([
-        A.RandomCrop(512, 512),
+        # A.RandomCrop(512, 512),
         A.Normalize(mean=mean, std=std),
         ToTensorV2(),
     ])

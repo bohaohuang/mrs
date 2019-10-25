@@ -106,30 +106,33 @@ def sequential_load(target, source_state):
     return new_dict
 
 
-def flex_load(model_dict, ckpt_dict, relax_load=False, disable_parallel=False):
+def flex_load(model_dict, ckpt_dict, relax_load=False, disable_parallel=False, verb=True):
     # try to load model with relaxed naming restriction
     ckpt_params = [a for a in ckpt_dict.keys()]
     self_params = [a for a in model_dict.keys()]
 
     # only exists in ckpt
-    print('Warning: The following parameters in the pretrained model does not exist in the current model')
     model_params = [a for a in ckpt_params if a not in self_params]
-    for mp in model_params:
-        print('\t', mp)
+    if verb:
+        print('Warning: The following parameters in the pretrained model does not exist in the current model')
+        for mp in model_params:
+            print('\t', mp)
 
     # only exists in self
-    print('Warning: The following parameters in the current model does not exist in the pretrained model')
     model_params = [a for a in self_params if a not in ckpt_params]
-    for mp in model_params:
-        print('\t', mp)
+    if verb:
+        print('Warning: The following parameters in the current model does not exist in the pretrained model')
+        for mp in model_params:
+            print('\t', mp)
 
     # size not match
-    print('Warning: The size of the following parameters in the current model does not match the ones in the '
-          'pretrained model')
     model_params = [a for a in ckpt_params if a in self_params and model_dict[a].size() !=
                     ckpt_dict[a].size()]
-    for mp in model_params:
-        print('\t', mp)
+    if verb:
+        print('Warning: The size of the following parameters in the current model does not match the ones in the '
+              'pretrained model')
+        for mp in model_params:
+            print('\t', mp)
 
     if not relax_load and not disable_parallel:
         pretrained_state = {k: v for k, v in ckpt_dict.items() if k in model_dict and
@@ -137,7 +140,8 @@ def flex_load(model_dict, ckpt_dict, relax_load=False, disable_parallel=False):
         if len(pretrained_state) == 0:
             raise ValueError('No parameter matches in the current model in pretrained model, please check '
                              'the model definition or enable relax_load')
-        print('Try loading without those parameters')
+        if verb:
+            print('Try loading without those parameters')
         return pretrained_state
     elif disable_parallel:
         pretrained_state = {k: v for k, v in ckpt_dict.items() if k.replace('module.', '') in model_dict and
@@ -145,11 +149,13 @@ def flex_load(model_dict, ckpt_dict, relax_load=False, disable_parallel=False):
         if len(pretrained_state) == 0:
             raise ValueError('No parameter matches in the current model in pretrained model, please check '
                              'the model definition or enable relax_load')
-        print('Try loading without those parameters')
-        print('{:.2f}% of the model loaded from the pretrained'.format(len(pretrained_state) / len(self_params) * 100))
+        if verb:
+            print('Try loading without those parameters')
+            print('{:.2f}% of the model loaded from the pretrained'.format(len(pretrained_state) / len(self_params) * 100))
         return pretrained_state
     else:
-        print('Try loading with relaxed naming rule:')
+        if verb:
+            print('Try loading with relaxed naming rule:')
         pretrained_state = {}
 
         # find one match string
@@ -157,23 +163,28 @@ def flex_load(model_dict, ckpt_dict, relax_load=False, disable_parallel=False):
         for self_name in self_params:
             if self_name in ckpt_params[0]:
                 prefix = copy.deepcopy(ckpt_params[0]).replace(self_name, '')
-                print('Prefix in pretrained model {}'.format(prefix))
+                if verb:
+                    print('Prefix in pretrained model {}'.format(prefix))
                 break
             elif ckpt_params[0] in self_name:
                 prefix = copy.deepcopy(self_name).replace(ckpt_params[0], '')
-                print('Prefix in current model {}'.format(prefix))
+                if verb:
+                    print('Prefix in current model {}'.format(prefix))
                 break
 
         for self_name in self_params:
             ckpt_name = '{}{}'.format(prefix, self_name)
             if ckpt_name in ckpt_params:
-                print('\tpretrained param: {} -> current param: {}'.format(self_name, ckpt_name))
+                if verb:
+                    print('\tpretrained param: {} -> current param: {}'.format(self_name, ckpt_name))
                 if model_dict[self_name].size() == ckpt_dict[ckpt_name].size():
                     pretrained_state[self_name] = ckpt_dict[ckpt_name]
                 else:
-                    print('\t\tIgnoring: {}->{} (size mismatch)'.format(ckpt_name, self_name))
+                    if verb:
+                        print('\t\tIgnoring: {}->{} (size mismatch)'.format(ckpt_name, self_name))
 
-        print('{:.2f}% of the model loaded from the pretrained'.format(len(pretrained_state) / len(self_params) * 100))
+        if verb:
+            print('{:.2f}% of the model loaded from the pretrained'.format(len(pretrained_state) / len(self_params) * 100))
         return pretrained_state
 
 
