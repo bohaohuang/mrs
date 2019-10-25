@@ -99,7 +99,7 @@ def visualize(rgb, gt, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.255)):
     """
     Visualize a given pair of image and mask normalized tensors
     :param rgb: the image tensor with shape [c, h, w]
-    :param gt: the mask tensor with shape [1, h, w]
+    :param gt: the mask tensor with shape [1, h, w]ps512_pd0_ol0
     :param mean: the mean used to normalize the input
     :param std: the std used to normalize the input
     :return:
@@ -163,4 +163,4 @@ def create_toy_set(data_dir, train_file='file_list_train.txt', valid_file='file_
 
 
 if __name__ == '__main__':
-    create_toy_set(r'/hdd/mrs/inria/ps512_pd0_ol', move_dir='/hdd/mrs/inria/toyset')
+    create_toy_set(r'/hdd/mrs/inria/ps512_pd0_ol0', move_dir='/hdd/mrs/inria/toyset')

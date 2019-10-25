@@ -14,6 +14,7 @@ import numpy as np
 # PyTorch
 import torch
 import torchvision
+import torch.nn.functional as F
 from torch import nn
 from torchsummary import summary
 
@@ -105,30 +106,33 @@ def sequential_load(target, source_state):
     return new_dict
 
 
-def flex_load(model_dict, ckpt_dict, relax_load=False, disable_parallel=False):
+def flex_load(model_dict, ckpt_dict, relax_load=False, disable_parallel=False, verb=True):
     # try to load model with relaxed naming restriction
     ckpt_params = [a for a in ckpt_dict.keys()]
     self_params = [a for a in model_dict.keys()]
 
     # only exists in ckpt
-    print('Warning: The following parameters in the pretrained model does not exist in the current model')
     model_params = [a for a in ckpt_params if a not in self_params]
-    for mp in model_params:
-        print('\t', mp)
+    if verb:
+        print('Warning: The following parameters in the pretrained model does not exist in the current model')
+        for mp in model_params:
+            print('\t', mp)
 
     # only exists in self
-    print('Warning: The following parameters in the current model does not exist in the pretrained model')
     model_params = [a for a in self_params if a not in ckpt_params]
-    for mp in model_params:
-        print('\t', mp)
+    if verb:
+        print('Warning: The following parameters in the current model does not exist in the pretrained model')
+        for mp in model_params:
+            print('\t', mp)
 
     # size not match
-    print('Warning: The size of the following parameters in the current model does not match the ones in the '
-          'pretrained model')
     model_params = [a for a in ckpt_params if a in self_params and model_dict[a].size() !=
                     ckpt_dict[a].size()]
-    for mp in model_params:
-        print('\t', mp)
+    if verb:
+        print('Warning: The size of the following parameters in the current model does not match the ones in the '
+              'pretrained model')
+        for mp in model_params:
+            print('\t', mp)
 
     if not relax_load and not disable_parallel:
         pretrained_state = {k: v for k, v in ckpt_dict.items() if k in model_dict and
@@ -136,7 +140,8 @@ def flex_load(model_dict, ckpt_dict, relax_load=False, disable_parallel=False):
         if len(pretrained_state) == 0:
             raise ValueError('No parameter matches in the current model in pretrained model, please check '
                              'the model definition or enable relax_load')
-        print('Try loading without those parameters')
+        if verb:
+            print('Try loading without those parameters')
         return pretrained_state
     elif disable_parallel:
         pretrained_state = {k: v for k, v in ckpt_dict.items() if k.replace('module.', '') in model_dict and
@@ -144,11 +149,13 @@ def flex_load(model_dict, ckpt_dict, relax_load=False, disable_parallel=False):
         if len(pretrained_state) == 0:
             raise ValueError('No parameter matches in the current model in pretrained model, please check '
                              'the model definition or enable relax_load')
-        print('Try loading without those parameters')
-        print('{:.2f}% of the model loaded from the pretrained'.format(len(pretrained_state) / len(self_params) * 100))
+        if verb:
+            print('Try loading without those parameters')
+            print('{:.2f}% of the model loaded from the pretrained'.format(len(pretrained_state) / len(self_params) * 100))
         return pretrained_state
     else:
-        print('Try loading with relaxed naming rule:')
+        if verb:
+            print('Try loading with relaxed naming rule:')
         pretrained_state = {}
 
         # find one match string
@@ -156,23 +163,28 @@ def flex_load(model_dict, ckpt_dict, relax_load=False, disable_parallel=False):
         for self_name in self_params:
             if self_name in ckpt_params[0]:
                 prefix = copy.deepcopy(ckpt_params[0]).replace(self_name, '')
-                print('Prefix in pretrained model {}'.format(prefix))
+                if verb:
+                    print('Prefix in pretrained model {}'.format(prefix))
                 break
             elif ckpt_params[0] in self_name:
                 prefix = copy.deepcopy(self_name).replace(ckpt_params[0], '')
-                print('Prefix in current model {}'.format(prefix))
+                if verb:
+                    print('Prefix in current model {}'.format(prefix))
                 break
 
         for self_name in self_params:
             ckpt_name = '{}{}'.format(prefix, self_name)
             if ckpt_name in ckpt_params:
-                print('\tpretrained param: {} -> current param: {}'.format(self_name, ckpt_name))
+                if verb:
+                    print('\tpretrained param: {} -> current param: {}'.format(self_name, ckpt_name))
                 if model_dict[self_name].size() == ckpt_dict[ckpt_name].size():
                     pretrained_state[self_name] = ckpt_dict[ckpt_name]
                 else:
-                    print('\t\tIgnoring: {}->{} (size mismatch)'.format(ckpt_name, self_name))
+                    if verb:
+                        print('\t\tIgnoring: {}->{} (size mismatch)'.format(ckpt_name, self_name))
 
-        print('{:.2f}% of the model loaded from the pretrained'.format(len(pretrained_state) / len(self_params) * 100))
+        if verb:
+            print('{:.2f}% of the model loaded from the pretrained'.format(len(pretrained_state) / len(self_params) * 100))
         return pretrained_state
 
 
@@ -253,12 +265,14 @@ class Evaluator:
         else:
             raise NotImplementedError('Dataset {} is not supported'.format(ds_name))
 
-    def evaluate(self, model, patch_size, overlap, pred_dir=None, report_dir=None):
+    def evaluate(self, model, patch_size, overlap, pred_dir=None, report_dir=None, save_conf=False):
         iou_a, iou_b = 0, 0
         report = []
         if pred_dir:
             misc_utils.make_dir_if_not_exist(pred_dir)
         for rgb_file, lbl_file in zip(self.rgb_files, self.lbl_files):
+            file_name = os.path.splitext(os.path.basename(lbl_file))[0]
+
             # read data
             rgb = misc_utils.load_file(rgb_file)[:, :, :3]
             lbl = misc_utils.load_file(lbl_file)
@@ -273,7 +287,7 @@ class Evaluator:
                     tsfm_image = tsfm(image=patch)
                     patch = tsfm_image['image']
                 patch = torch.unsqueeze(patch, 0).to(self.device)
-                pred = model.forward(patch).detach().cpu().numpy()
+                pred = F.softmax(model.forward(patch), 1).detach().cpu().numpy()
                 tile_preds.append(data_utils.change_channel_order(pred, True)[0, :, :, :])
             # stitch back to tiles
             tile_preds = patch_extractor.unpatch_block(
@@ -284,9 +298,10 @@ class Evaluator:
                 [patch_size[0]-2*model.lbl_margin, patch_size[1]-2*model.lbl_margin],
                 overlap=2*model.lbl_margin
             )
+            if save_conf:
+                misc_utils.save_file(os.path.join(pred_dir, '{}.npy'.format(file_name)), tile_preds[:, :, 1])
             tile_preds = np.argmax(tile_preds, -1)
             a, b = metric_utils.iou_metric(lbl/self.truth_val, tile_preds)
-            file_name = os.path.splitext(os.path.basename(lbl_file))[0]
             print('{}: IoU={:.2f}'.format(file_name, a/b*100))
             report.append('{},{},{},{}\n'.format(file_name, a, b, a/b*100))
             iou_a += a

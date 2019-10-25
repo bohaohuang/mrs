@@ -92,15 +92,18 @@ def train_model(args, device, parallel):
         c.to(device)
 
     # make data loader
+    # TODO augmentation as option
     mean = eval(args['dataset']['mean'])
     std = eval(args['dataset']['std'])
     tsfm_train = A.Compose([
+        # A.RandomCrop(512, 512),
         A.Flip(),
         A.RandomRotate90(),
         A.Normalize(mean=mean, std=std),
         ToTensorV2(),
     ])
     tsfm_valid = A.Compose([
+        # A.RandomCrop(512, 512),
         A.Normalize(mean=mean, std=std),
         ToTensorV2(),
     ])
