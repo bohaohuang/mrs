@@ -45,7 +45,7 @@ def main():
         ToTensor(sigmoid=False),
     ])
     save_dir = os.path.join(r'/home/wh145/results/mrs/mass_roads', os.path.basename(network_utils.unique_model_name(args)))
-    evaluator = network_utils.Evaluator('mass_roads', DATA_DIR, tsfm_valid, device)
+    evaluator = network_utils.Evaluator('mnih', DATA_DIR, tsfm_valid, device)
     evaluator.evaluate(model, PATCHS_SIZE, 2*model.lbl_margin,
                        pred_dir=save_dir, report_dir=save_dir)
 

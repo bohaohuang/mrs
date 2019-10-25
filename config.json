@@ -4,7 +4,7 @@
   "decoder_name": "unet",
   "random_seed": 1024,
   "dataset": {
-    "ds_name": "mass_roads",
+    "ds_name": "mnih",
     "input_size": "(512, 512)",
     "class_num": 2,
     "mean" : "(0.485, 0.456, 0.406)",

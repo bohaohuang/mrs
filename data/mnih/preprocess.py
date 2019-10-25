@@ -5,6 +5,7 @@ This file preprocess the raw MNIH Massachusetts Roads Dataset and extract the im
 
 # Built-in
 import os
+import csv
 
 # Libs
 import numpy as np
@@ -64,7 +65,6 @@ def patch_mnih(data_dir, save_dir, patch_size, pad, overlap):
         patch_dir = os.path.join(save_dir, dataset)
         misc_utils.make_dir_if_not_exist(patch_dir)
         record_file = open(os.path.join(save_dir, 'file_list_{}.txt'.format(dataset)), 'w+')
-#         record_file_valid = open(os.path.join(save_dir, 'file_list_valid.txt'), 'w+')
 
         # get rgb and gt files
         for fname in tqdm(FILENAMES, desc='File-wise'):
@@ -78,26 +78,29 @@ def patch_mnih(data_dir, save_dir, patch_size, pad, overlap):
                 misc_utils.save_file(os.path.join(patch_dir, gt_patchname), (gt_patch/255).astype(np.uint8))
                 record_file.write('{} {}\n'.format(rgb_patchname, gt_patchname))
         record_file.close()
-#         record_file_valid.close()
 
-def get_images(data_dir, city_ids=tuple(range(5)), tile_ids=tuple(range(1, 6))):
+
+def get_images(data_dir, dataset='test'):
+    """
+    Stand-alone function to be used in evaluate.py.
+    :param data_dir
+    :param dataset: name of the dataset/split
+    """    
     rgb_files = []
     gt_files = []
-    for city_name in SAVE_CITY:
-        for tile_id in tile_ids:
-            rgb_filename = os.path.join(data_dir, 'image', '{}{}.tif'.format(city_name, tile_id))
-            gt_filename = os.path.join(data_dir, 'truth', '{}{}.tif'.format(city_name, tile_id))
-            if city_name in VAL_CITY and tile_id in VAL_IDS:
-                rgb_files.append(rgb_filename)
-                gt_files.append(gt_filename)
+    with open(os.path.join(data_dir, 'file_list_{}.txt'.format(dataset)), 'r') as f:
+        for _, line in enumerate(f):
+            rgb, gt = line.replace('\n', '').split(' ')
+            rgb_files.append(rgb)
+            gt_files.append(rgb)
+        f.close()
     return rgb_files, gt_files
-
 
 if __name__ == '__main__':
     ps = 512
     pd = 0
     ol = 0
-    save_dir = r'/data/users/wh145/processed_mass_roads/' # os.path.join(r'/data/users/wh145/p_mass_roads/', SPLITS[0])
+    save_dir = r'/data/users/wh145/processed_mass_roads/'
     misc_utils.make_dir_if_not_exist(save_dir)
     patch_mnih(data_dir=r'/data/users/wh145/mass_roads',
                 save_dir=save_dir,

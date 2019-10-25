@@ -12,6 +12,7 @@ model/log/
 model/log_pre/
 .idea/
 tasks/
+*.log
 
 # C extensions
 *.so
@@ -79,6 +80,7 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+*.ipynb
 
 # pyenv
 .python-version
@@ -101,6 +103,9 @@ venv.bak/
 # Spyder project settings
 .spyderproject
 .spyproject
+
+# VS Code settings
+.vscode
 
 # Rope project settings
 .ropeproject
