@@ -48,6 +48,7 @@ def train_model(args, device, parallel):
     :param device: the device to run the model
     :return:
     """
+    
     model = network_io.create_model(args)
     log_dir = os.path.join(args['save_dir'], 'log')
     writer = SummaryWriter(log_dir=log_dir)
