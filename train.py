@@ -19,8 +19,6 @@ from tensorboardX import SummaryWriter
 import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
-# torch.backends.cudnn.enabled = False
-# torch.backends.cudnn.benchmark=True
 
 # Own modules
 from data import data_loader
@@ -50,9 +48,6 @@ def train_model(args, device, parallel):
     :param device: the device to run the model
     :return:
     """
-#     device_ids=device
-#     device = torch.device('cuda:' + str(device[0]))
-#     print(device)
     
     model = network_io.create_model(args)
     log_dir = os.path.join(args['save_dir'], 'log')
