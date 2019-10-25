@@ -18,9 +18,7 @@ from mrs_utils import misc_utils
 # Settings
 DATA_DIR = '/data/users/wh145/mass_roads/'
 SPLITS = os.listdir(DATA_DIR) # train, valid, test
-MODES = os.listdir(os.path.join(DATA_DIR, SPLITS[0])) # sat (ipt), map(tgt)
-TILES_PER_FILE = 5
-print(MODES)
+MODES = os.listdir(os.path.join(DATA_DIR, SPLITS[0])) # sat (input), map (target)
 
 def patch_tile(rgb_file, gt_file, patch_size, pad, overlap):
     """
@@ -68,7 +66,6 @@ def patch_mnih(data_dir, save_dir, patch_size, pad, overlap):
 
         # get rgb and gt files
         for fname in tqdm(FILENAMES, desc='File-wise'):
-#             for tile_id in tqdm(range(TILES_PER_FILE-1), desc='Tile-wise', leave=False):
             rgb_filename = os.path.join(DATA_DIR, dataset, 'sat', fname+'.tiff')
             gt_filename = os.path.join(DATA_DIR, dataset, 'map', fname+'.tif')
             for rgb_patch, gt_patch, y, x in patch_tile(rgb_filename, gt_filename, patch_size, pad, overlap):
