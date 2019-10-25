@@ -91,8 +91,8 @@ def get_images(data_dir, dataset='test'):
     with open(os.path.join(data_dir, 'file_list_{}.txt'.format(dataset)), 'r') as f:
         for _, line in enumerate(f):
             rgb, gt = line.replace('\n', '').split(' ')
-            rgb_files.append(rgb)
-            gt_files.append(rgb)
+            rgb_files.append(os.path.join(data_dir, rgb))
+            gt_files.append(os.path.join(data_dir, gt))
         f.close()
     return rgb_files, gt_files
 
