@@ -21,7 +21,7 @@ from torchsummary import summary
 def set_gpu(gpu, enable_benchmark=True):
     """
     Set which gpu to use, also return True as indicator for parallel model if multi-gpu selected
-    :param gpu: which gpu to use, could a a string with device ids separated by ','
+    :param gpu: which gpu(s) to use, could allow a string with device ids separated by ','
     :param enable_benchmark: if True, will let CUDNN find optimal set of algorithms for input configuration
     :return: device instance
     """
@@ -29,7 +29,8 @@ def set_gpu(gpu, enable_benchmark=True):
         os.environ["CUDA_VISIBLE_DEVICES"] = gpu
         parallel = True
         device = torch.device("cuda:{}".format(','.join([str(a) for a in range(len(gpu.split(',')))])))
-        print("Devices being used:", device)
+#         device = [int(a) for a in gpu.split(',')]
+        print("Devices being used: cuda:", device)
     else:
         parallel = False
         device = torch.device("cuda:{}".format(gpu))

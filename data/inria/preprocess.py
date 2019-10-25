@@ -108,7 +108,7 @@ def patch_inria(data_dir, save_dir, patch_size, pad, overlap):
 #                 rgb_patchname = '{}{}_y{}x{}.jpg'.format(fname, tile_id, int(y), int(x))
 #                 gt_patchname = '{}{}_y{}x{}.png'.format(fname, tile_id, int(y), int(x))
                 misc_utils.save_file(os.path.join(patch_dir, rgb_patchname), rgb_patch.astype(np.uint8))
-                misc_utils.save_file(os.path.join(patch_dir, gt_patchname), (gt_patch).astype(np.uint8))
+                misc_utils.save_file(os.path.join(patch_dir, gt_patchname), (gt_patch/255).astype(np.uint8))
 #                     misc_utils.save_file(os.path.join(patch_dir, gt_patchname), (gt_patch/255).astype(np.uint8))
 #                     if fname in SPLITS and tile_id in range(TILES_PER_FILE-1):
 #                         record_file_valid.write('{} {}\n'.format(rgb_patchname, gt_patchname))
@@ -135,7 +135,7 @@ if __name__ == '__main__':
     ps = 512
     pd = 0
     ol = 0
-    save_dir = r'/data/users/wh145/p_mass_roads/' # os.path.join(r'/data/users/wh145/p_mass_roads/', SPLITS[0])
+    save_dir = r'/data/users/wh145/processed_mass_roads/' # os.path.join(r'/data/users/wh145/p_mass_roads/', SPLITS[0])
 #     save_dir = os.path.join(r'/data/users/wh145/p_mass_roads_valid/', 'ps{}_pd{}_ol{}'.format(ps, pd, ol))
     misc_utils.make_dir_if_not_exist(save_dir)
     patch_inria(data_dir=r'/data/users/wh145/mass_roads',
