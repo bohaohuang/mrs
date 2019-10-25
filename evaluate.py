@@ -8,7 +8,7 @@ import os
 
 # Libs
 import albumentations as A
-from albumentations.pytorch import ToTensor
+from albumentations.pytorch import ToTensorV2
 
 # Own modules
 from mrs_utils import misc_utils
@@ -42,7 +42,7 @@ def main():
     std = (0.229, 0.224, 0.225)
     tsfm_valid = A.Compose([
         A.Normalize(mean=mean, std=std),
-        ToTensor(sigmoid=False),
+        ToTensorV2(),
     ])
     save_dir = os.path.join(r'/home/wh145/results/mrs/mass_roads', os.path.basename(network_utils.unique_model_name(args)))
     evaluator = network_utils.Evaluator('mnih', DATA_DIR, tsfm_valid, device)
