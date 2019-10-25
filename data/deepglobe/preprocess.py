@@ -116,9 +116,10 @@ def make_dataset(ds_train, ds_valid, save_dir, th=0.5):
             if blank_region > th:
                 ds_dict[phase]['remove_cnt'] += 1
                 os.remove(img_save_name)
-                continue
-            misc_utils.save_file(os.path.join(patch_dir, lbl_save_name), (lbl / 255).astype(np.uint8))
-            ds_dict[phase]['record'].write('{} {}\n'.format(img_save_name, lbl_save_name))
+            else:
+                misc_utils.save_file(os.path.join(patch_dir, lbl_save_name), (lbl / 255).astype(np.uint8))
+                ds_dict[phase]['record'].write('{} {}\n'.format(os.path.basename(img_save_name),
+                                                                os.path.basename(lbl_save_name)))
         ds_dict[phase]['record'].close()
         print('{} set: {:.2f}% data removed with threshold of {}'.format(
             phase, ds_dict[phase]['remove_cnt']/len(ds_dict[phase]['ds']), th))
@@ -136,8 +137,8 @@ def get_images(data_dir):
 
 
 if __name__ == '__main__':
-    save_dir = os.path.join(r'/hdd/mrs/deepglobe', 'pd{}_ol{}'.format(0, 0))
-    train, valid = get_image_gt(r'/hdd/deepglobe', ['Vegas', 'Paris', 'Shanghai', 'Khartoum'])
+    save_dir = os.path.join(r'/hdd/mrs/deepglobe', '14p_pd{}_ol{}'.format(0, 0))
+    train, valid = get_image_gt(r'/hdd/deepglobe', ['Vegas', 'Paris', 'Shanghai', 'Khartoum'], valid_percent=0.14)
     make_dataset(train, valid, save_dir)
 
     # get_images(save_dir)
