@@ -1,7 +1,7 @@
 {
-  "gpu": "0",
-  "encoder_name": "vgg16",
-  "decoder_name": "unet",
+  "gpu": "1",
+  "encoder_name": "resnet50",
+  "decoder_name": "dlinknet",
   "random_seed": 1,
   "dataset": {
     "ds_name": "inria",
@@ -13,21 +13,21 @@
     "train_file": "/hdd/mrs/inria/ps512_pd0_ol0/file_list_train.txt",
     "valid_file": "/hdd/mrs/inria/ps512_pd0_ol0/file_list_valid.txt",
     "batch_size": 5,
-    "num_workers": 4
+    "num_workers": 8
   },
   "optimizer": {
     "learn_rate_encoder": 1e-3,
-    "learn_rate_decoder": 1e-3,
+    "learn_rate_decoder": 1e-2,
     "decay_rate": 0.1,
-    "decay_step": "[2]"
+    "decay_step": "[50]"
   },
   "trainer": {
     "criterion_name": "xent,iou",
     "bp_loss_idx": 0,
-    "epochs": 5,
-    "save_epoch": 1,
+    "epochs": 80,
+    "save_epoch": 80,
     "resume_epoch": 0,
     "finetune_dir": "None",
-    "save_root": "/hdd6/Models/mrs/"
+    "save_root": "/hdd6/Models/mrs/dev"
   }
 }
