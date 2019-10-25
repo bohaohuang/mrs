@@ -5,8 +5,6 @@
 
 # Built-in
 import os
-import sys
-sys.path.append('/home/wh145/mrs/')
 
 # Libs
 import albumentations as A

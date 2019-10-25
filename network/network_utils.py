@@ -246,7 +246,7 @@ class Evaluator:
             assert len(self.rgb_files) == len(self.lbl_files)
             self.truth_val = 1
         else:
-            raise NotImplementedError('Dataset {} is not supported')
+            raise NotImplementedError('Dataset {} is not supported'.format(ds_name))
 
     def evaluate(self, model, patch_size, overlap, pred_dir=None, report_dir=None):
         iou_a, iou_b = 0, 0
