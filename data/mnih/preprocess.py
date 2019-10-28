@@ -16,7 +16,7 @@ from data import data_utils
 from mrs_utils import misc_utils
 
 # Settings
-DATA_DIR = '/data/users/wh145/mass_roads/'
+DATA_DIR = '/data/users/wh145/mnih/'
 SPLITS = os.listdir(DATA_DIR) # train, valid, test
 MODES = os.listdir(os.path.join(DATA_DIR, SPLITS[0])) # sat (input), map (target)
 
@@ -97,9 +97,9 @@ if __name__ == '__main__':
     ps = 512
     pd = 0
     ol = 0
-    save_dir = r'/data/users/wh145/processed_mass_roads/'
+    save_dir = r'/data/users/wh145/processed_mnih/'
     misc_utils.make_dir_if_not_exist(save_dir)
-    patch_mnih(data_dir=r'/data/users/wh145/mass_roads',
+    patch_mnih(data_dir=DATA_DIR,
                 save_dir=save_dir,
                 patch_size=(ps, ps),
                 pad=pd, overlap=ol)
