@@ -151,4 +151,4 @@ class DLinkNet(base_model.Base):
 if __name__ == '__main__':
     from network import network_utils
 
-    network_utils.network_summary(DLinkNet, (3, 512, 512), n_class=2)
+    network_utils.network_summary(DLinkNet, (3, 512, 512), n_class=2, encoder_name='vgg16_bn')
