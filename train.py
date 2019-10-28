@@ -86,21 +86,19 @@ def train_model(args, device, parallel):
         c.to(device)
 
     # make data loader
-    # TODO augmentation as option
+    # TODO simplify this code
     mean = eval(args['dataset']['mean'])
     std = eval(args['dataset']['std'])
-    tsfm_train = A.Compose([
-        # A.RandomCrop(512, 512),
-        A.Flip(),
-        A.RandomRotate90(),
-        A.Normalize(mean=mean, std=std),
-        ToTensorV2(),
-    ])
-    tsfm_valid = A.Compose([
-        # A.RandomCrop(512, 512),
-        A.Normalize(mean=mean, std=std),
-        ToTensorV2(),
-    ])
+    input_size = eval(args['dataset']['input_size'])
+    crop_size = eval(args['dataset']['crop_size'])
+    tsfms = [A.Flip(), A.RandomRotate90(), A.Normalize(mean=mean, std=std), ToTensorV2()]
+    if input_size[0] != crop_size[0] or input_size[1] != crop_size[1]:
+        print('here')
+        tsfm_train = A.Compose([A.RandomCrop(*crop_size)]+tsfms)
+        tsfm_valid = A.Compose([A.RandomCrop(*crop_size)]+tsfms[2:])
+    else:
+        tsfm_train = A.Compose(tsfms)
+        tsfm_valid = A.Compose(tsfms[-2:])
     train_loader = DataLoader(data_loader.RSDataLoader(args['dataset']['data_dir'], args['dataset']['train_file'],
                                                        transforms=tsfm_train),
                               batch_size=args['dataset']['batch_size'], shuffle=True,
