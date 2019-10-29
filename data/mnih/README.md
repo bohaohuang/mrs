@@ -11,9 +11,9 @@ mnih
 │   │   │   ***.tif  <--- target
 │   │   │   ...
 │   │
-│	└── sat
-│	    │   ***.tiff  <--- input
-│	    │   ...
+│   └── sat
+│	│   ***.tiff  <--- input
+│	│   ...
 │
 └── valid
 │   │
@@ -21,9 +21,9 @@ mnih
 │   │   │   ***.tif
 │   │   │   ...
 │   │
-│	└── sat
-│	    │   ***.tiff
-│	    │   ...
+│   └── sat
+│	│   ***.tiff
+│	│   ...
 │
 └── test
     │
@@ -31,9 +31,9 @@ mnih
     │   │   ***.tif
     │   │   ...
     │
-	└── sat
-	    │   ***.tiff
-	    │   ...
+    └── sat
+	│   ***.tiff
+	│   ...
 ```
 3. Edit `DATA_DIR` and `save_dir` in `preprocess.py`
 4. Run `preprocess.py`
