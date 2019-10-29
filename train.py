@@ -86,14 +86,12 @@ def train_model(args, device, parallel):
         c.to(device)
 
     # make data loader
-    # TODO simplify this code
     mean = eval(args['dataset']['mean'])
     std = eval(args['dataset']['std'])
     input_size = eval(args['dataset']['input_size'])
     crop_size = eval(args['dataset']['crop_size'])
     tsfms = [A.Flip(), A.RandomRotate90(), A.Normalize(mean=mean, std=std), ToTensorV2()]
     if input_size[0] != crop_size[0] or input_size[1] != crop_size[1]:
-        print('here')
         tsfm_train = A.Compose([A.RandomCrop(*crop_size)]+tsfms)
         tsfm_valid = A.Compose([A.RandomCrop(*crop_size)]+tsfms[2:])
     else:
