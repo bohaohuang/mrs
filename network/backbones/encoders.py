@@ -8,8 +8,6 @@
 # Libs
 
 # Own modules
-import sys
-sys.path.append('.')
 from network.backbones import vggnet, resnet, squeezenet
 
 
@@ -27,7 +25,6 @@ def models(model_name, pretrained, strides, inter_features):
 
 if __name__ == '__main__':
     import torch
-    # model = models('resnet50', False, (2, 2, 2, 2, 2), True)
-    model = models('squeezenet1_0', False, (2, 2, 2, 2), True)
+    model = models('resnet50', False, (2, 2, 2, 2, 2), True)
     x = torch.randn((1, 3, 512, 512))
     print(model(x))
