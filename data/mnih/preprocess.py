@@ -87,8 +87,8 @@ def get_images(data_dir=DATA_DIR, dataset='test'):
     gt_files = []
     file_list = os.listdir(os.path.join(data_dir, dataset, 'map'))
     for fname in file_list:
-        gt_files.append(os.path.join(data_dir, dataset, fname))
-        rgb_files.append(os.path.join(data_dir, dataset, fname.replace('tif', 'tiff')))
+        gt_files.append(os.path.join(data_dir, dataset, 'map' ,fname))
+        rgb_files.append(os.path.join(data_dir, dataset, 'sat' ,fname.replace('tif', 'tiff')))
     return rgb_files, gt_files
 
 if __name__ == '__main__':
