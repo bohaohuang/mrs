@@ -103,17 +103,21 @@ class Base(nn.Module):
         :param kwargs:
         :return:
         """
+        def infi_loop(dl):
+            while True:
+                for x in dl: yield x
+
+        for cnt, dlo in enumerate(data_loader_others):
+            data_loader_others[cnt] = infi_loop(dlo)
+
         loss_dict = {}
         for img_cnt, (image, label) in enumerate(tqdm(data_loader_ref, desc='{}'.format(phase))):
             # load data
-            for dlo in data_loader_others:
-                try:
+            if phase == 'train':
+                for dlo in data_loader_others:
                     image_other, label_other = next(dlo)
-                except StopIteration:
-                    dlo = iter(dlo)
-                    image_other, label_other = next(dlo)
-                image = torch.cat([image, image_other], dim=0)
-                label = torch.cat([label, label_other], dim=0)
+                    image = torch.cat([image, image_other], dim=0)
+                    label = torch.cat([label, label_other], dim=0)
             image = Variable(image, requires_grad=True).to(device)
             label = Variable(label).long().to(device)
 
