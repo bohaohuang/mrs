@@ -17,7 +17,7 @@ from mrs_utils import misc_utils
 
 # Settings
 DATA_DIR = '/data/users/wh145/mnih/'
-SPLITS = os.listdir(DATA_DIR) # train, valid, test
+SPLITS = ['train', 'valid'] # test set will be grabbed by get_images() and processed during testing
 MODES = os.listdir(os.path.join(DATA_DIR, SPLITS[0])) # sat (input), map (target)
 
 def patch_tile(rgb_file, gt_file, patch_size, pad, overlap):
@@ -77,7 +77,7 @@ def patch_mnih(data_dir, save_dir, patch_size, pad, overlap):
         record_file.close()
 
 
-def get_images(data_dir, dataset='test'):
+def get_images(data_dir=DATA_DIR, dataset='test'):
     """
     Stand-alone function to be used in evaluate.py.
     :param data_dir
@@ -85,12 +85,10 @@ def get_images(data_dir, dataset='test'):
     """    
     rgb_files = []
     gt_files = []
-    with open(os.path.join(data_dir, 'file_list_{}.txt'.format(dataset)), 'r') as f:
-        for _, line in enumerate(f):
-            rgb, gt = line.replace('\n', '').split(' ')
-            rgb_files.append(os.path.join(data_dir, rgb))
-            gt_files.append(os.path.join(data_dir, gt))
-        f.close()
+    file_list = os.listdir(os.path.join(data_dir, dataset, 'map'))
+    for fname in file_list:
+        gt_files.append(os.path.join(data_dir, dataset, fname))
+        rgb_files.append(os.path.join(data_dir, dataset, fname.replace('tif', 'tiff')))
     return rgb_files, gt_files
 
 if __name__ == '__main__':
