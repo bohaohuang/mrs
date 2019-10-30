@@ -253,19 +253,19 @@ class Evaluator:
             self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
             assert len(self.rgb_files) == len(self.lbl_files)
             self.truth_val = 255
-        if ds_name == 'mnih':
-            from data.mnih import preprocess
-            self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
+        elif ds_name == 'deepglobe':
+            from data.deepglobe import preprocess
+            self.rgb_files, self.lbl_files = preprocess.get_images(data_dir)
             assert len(self.rgb_files) == len(self.lbl_files)
-            self.truth_val = 255
+            self.truth_val = 1
         elif load_func:
             self.rgb_files, self.lbl_files = load_func(data_dir, **kwargs)
             assert len(self.rgb_files) == len(self.lbl_files)
             self.truth_val = 1
         else:
-            raise NotImplementedError('Dataset {} is not supported'.format(ds_name))
+            raise NotImplementedError('Dataset {} is not supported')
 
-    def evaluate(self, model, patch_size, overlap, pred_dir=None, report_dir=None, save_conf=False):
+    def evaluate(self, model, patch_size, overlap, pred_dir=None, report_dir=None, save_conf=False, delta=1e-6):
         iou_a, iou_b = 0, 0
         report = []
         if pred_dir:
@@ -302,8 +302,8 @@ class Evaluator:
                 misc_utils.save_file(os.path.join(pred_dir, '{}.npy'.format(file_name)), tile_preds[:, :, 1])
             tile_preds = np.argmax(tile_preds, -1)
             a, b = metric_utils.iou_metric(lbl/self.truth_val, tile_preds)
-            print('{}: IoU={:.2f}'.format(file_name, a/b*100))
-            report.append('{},{},{},{}\n'.format(file_name, a, b, a/b*100))
+            print('{}: IoU={:.2f}'.format(file_name, a/(b+delta)*100))
+            report.append('{},{},{},{}\n'.format(file_name, a, b, a/(b+delta)*100))
             iou_a += a
             iou_b += b
             if pred_dir:

@@ -117,6 +117,9 @@ def make_dataset(ds_train, ds_valid, save_dir, th=0.5):
                 ds_dict[phase]['remove_cnt'] += 1
                 os.remove(img_save_name)
             else:
+                if img.shape[0] != lbl.shape[0] or img.shape[1] != lbl.shape[1]:
+                    assert np.unique(lbl) == np.array([0])
+                    lbl = lbl[:img.shape[0], :img.shape[1]]
                 misc_utils.save_file(os.path.join(patch_dir, lbl_save_name), (lbl / 255).astype(np.uint8))
                 ds_dict[phase]['record'].write('{} {}\n'.format(os.path.basename(img_save_name),
                                                                 os.path.basename(lbl_save_name)))
@@ -133,12 +136,15 @@ def make_dataset(ds_train, ds_valid, save_dir, th=0.5):
 def get_images(data_dir):
     record_file_valid = os.path.join(data_dir, 'file_list_valid.txt')
     file_list = misc_utils.load_file(record_file_valid)
-    print(file_list)
+    rgb_files, gt_files = [], []
+    for line in file_list:
+        rgb_file, gt_file = line.strip().split(' ')
+        rgb_files.append(os.path.join(data_dir, 'patches', rgb_file))
+        gt_files.append(os.path.join(data_dir, 'patches', gt_file))
+    return rgb_files, gt_files
 
 
 if __name__ == '__main__':
-    save_dir = os.path.join(r'/hdd/mrs/deepglobe', '14p_pd{}_ol{}'.format(0, 0))
-    train, valid = get_image_gt(r'/hdd/deepglobe', ['Vegas', 'Paris', 'Shanghai', 'Khartoum'], valid_percent=0.14)
+    save_dir = os.path.join(r'/hdd/mrs/deepglobe', 'pd{}_ol{}'.format(0, 0))
+    train, valid = get_image_gt(r'/hdd/deepglobe', ['Vegas', 'Paris', 'Shanghai', 'Khartoum'], valid_percent=0.4)
     make_dataset(train, valid, save_dir)
-
-    # get_images(save_dir)
