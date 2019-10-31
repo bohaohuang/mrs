@@ -171,7 +171,8 @@ class ResNet(nn.Module):
 def resnet18(pretrained=True, strides=(2, 2, 2, 1, 1), inter_features=False):
     model = ResNet(BasicBlock, [2, 2, 2, 2], strides=strides, inter_features=inter_features)
     if pretrained:
-        pretrained_state = network_utils.flex_load(model.state_dict(), model_zoo.load_url(model_urls['resnet18']))
+        pretrained_state = network_utils.flex_load(model.state_dict(), model_zoo.load_url(model_urls['resnet18']),
+                                                   verb=False)
         model.load_state_dict(pretrained_state, strict=False)
     return model
 
@@ -179,7 +180,8 @@ def resnet18(pretrained=True, strides=(2, 2, 2, 1, 1), inter_features=False):
 def resnet34(pretrained=True, strides=(2, 2, 2, 1, 1), inter_features=False):
     model = ResNet(BasicBlock, [3, 4, 6, 3], strides=strides, inter_features=inter_features)
     if pretrained:
-        pretrained_state = network_utils.flex_load(model.state_dict(), model_zoo.load_url(model_urls['resnet34']))
+        pretrained_state = network_utils.flex_load(model.state_dict(), model_zoo.load_url(model_urls['resnet34']),
+                                                   verb=False)
         model.load_state_dict(pretrained_state, strict=False)
     return model
 
@@ -187,7 +189,8 @@ def resnet34(pretrained=True, strides=(2, 2, 2, 1, 1), inter_features=False):
 def resnet50(pretrained=True, strides=(2, 2, 2, 1, 1), inter_features=False):
     model = ResNet(Bottleneck, [3, 4, 6, 3], strides=strides, inter_features=inter_features)
     if pretrained:
-        pretrained_state = network_utils.flex_load(model.state_dict(), model_zoo.load_url(model_urls['resnet50']))
+        pretrained_state = network_utils.flex_load(model.state_dict(), model_zoo.load_url(model_urls['resnet50']),
+                                                   verb=False)
         model.load_state_dict(pretrained_state, strict=False)
     return model
 
@@ -195,7 +198,8 @@ def resnet50(pretrained=True, strides=(2, 2, 2, 1, 1), inter_features=False):
 def resnet101(pretrained=True, strides=(2, 2, 2, 1, 1), inter_features=False):
     model = ResNet(Bottleneck, [3, 4, 23, 3], strides=strides, inter_features=inter_features)
     if pretrained:
-        pretrained_state = network_utils.flex_load(model.state_dict(), model_zoo.load_url(model_urls['resnet101']))
+        pretrained_state = network_utils.flex_load(model.state_dict(), model_zoo.load_url(model_urls['resnet101']),
+                                                   verb=False)
         model.load_state_dict(pretrained_state, strict=False)
     return model
 
@@ -203,7 +207,8 @@ def resnet101(pretrained=True, strides=(2, 2, 2, 1, 1), inter_features=False):
 def resnet152(pretrained=True, strides=(2, 2, 2, 1, 1), inter_features=False):
     model = ResNet(Bottleneck, [3, 8, 36, 3], strides=strides, inter_features=inter_features)
     if pretrained:
-        pretrained_state = network_utils.flex_load(model.state_dict(), model_zoo.load_url(model_urls['resnet152']))
+        pretrained_state = network_utils.flex_load(model.state_dict(), model_zoo.load_url(model_urls['resnet152']),
+                                                   verb=False)
         model.load_state_dict(pretrained_state, strict=False)
     return model
 

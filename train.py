@@ -9,8 +9,6 @@ import json
 import shutil
 import timeit
 import argparse
-import sys
-sys.path.append('/home/wh145/mrs/')
 
 # Libs
 import albumentations as A
@@ -50,6 +48,7 @@ def train_model(args, device, parallel):
     :param device: the device to run the model
     :return:
     """
+    
     model = network_io.create_model(args)
     log_dir = os.path.join(args['save_dir'], 'log')
     writer = SummaryWriter(log_dir=log_dir)
@@ -88,15 +87,18 @@ def train_model(args, device, parallel):
         c.to(device)
 
     # make data loader
+    # TODO augmentation as option
     mean = eval(args['dataset']['mean'])
     std = eval(args['dataset']['std'])
     tsfm_train = A.Compose([
+        # A.RandomCrop(512, 512),
         A.Flip(),
         A.RandomRotate90(),
         A.Normalize(mean=mean, std=std),
         ToTensorV2(),
     ])
     tsfm_valid = A.Compose([
+        # A.RandomCrop(512, 512),
         A.Normalize(mean=mean, std=std),
         ToTensorV2(),
     ])
@@ -128,7 +130,7 @@ def train_model(args, device, parallel):
             network_utils.write_and_print(writer, phase, epoch, args['trainer']['epochs'], loss_dict, start_time)
 
         # save the model
-        if epoch % args['trainer']['save_epoch'] == (args['trainer']['save_epoch'] - 1):
+        if epoch % args['trainer']['save_epoch'] == 0 and epoch != 0:
             save_name = os.path.join(args['save_dir'], 'epoch-{}.pth.tar'.format(epoch))
             network_utils.save(model, epoch, optm, loss_dict, save_name)
     # save model one last time

@@ -258,12 +258,17 @@ class Evaluator:
             self.rgb_files, self.lbl_files = preprocess.get_images(data_dir)
             assert len(self.rgb_files) == len(self.lbl_files)
             self.truth_val = 1
+        elif ds_name == 'mnih':
+            from data.mnih import preprocess
+            self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
+            assert len(self.rgb_files) == len(self.lbl_files)
+            self.truth_val = 255
         elif load_func:
             self.rgb_files, self.lbl_files = load_func(data_dir, **kwargs)
             assert len(self.rgb_files) == len(self.lbl_files)
             self.truth_val = 1
         else:
-            raise NotImplementedError('Dataset {} is not supported')
+            raise NotImplementedError('Dataset {} is not supported'.format(ds_name))
 
     def evaluate(self, model, patch_size, overlap, pred_dir=None, report_dir=None, save_conf=False, delta=1e-6):
         iou_a, iou_b = 0, 0

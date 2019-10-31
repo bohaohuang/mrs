@@ -1,6 +1,6 @@
 {
-  "gpu": "6,7",
-  "encoder_name": "vgg16",
+  "gpu": "6",
+  "encoder_name": "resnet34",
   "decoder_name": "unet",
   "random_seed": 1,
   "dataset": {
