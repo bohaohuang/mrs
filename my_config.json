@@ -1,0 +1,33 @@
+{
+  "gpu": "6",
+  "encoder_name": "resnet34",
+  "decoder_name": "unet",
+  "random_seed": 1,
+  "dataset": {
+    "ds_name": "mnih",
+    "input_size": "(512, 512)",
+    "class_num": 2,
+    "mean" : "(0.485, 0.456, 0.406)",
+    "std" : "(0.229, 0.224, 0.225)",
+    "data_dir": "/home/wh145/processed_mnih/",
+    "train_file": "/home/wh145/processed_mnih/file_list_train.txt",
+    "valid_file": "/home/wh145/processed_mnih/file_list_valid.txt",
+    "batch_size": 5,
+    "num_workers": 8
+  },
+  "optimizer": {
+    "learn_rate_encoder": 1e-3,
+    "learn_rate_decoder": 1e-2,
+    "decay_rate": 0.1,
+    "decay_step": "[50]"
+  },
+  "trainer": {
+    "criterion_name": "xent,iou",
+    "bp_loss_idx": 0,
+    "epochs": 80,
+    "save_epoch": 20,
+    "resume_epoch": 0,
+    "finetune_dir": "None",
+    "save_root": "/home/wh145/models"
+  }
+}
