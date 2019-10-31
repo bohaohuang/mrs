@@ -253,7 +253,7 @@ class Evaluator:
             self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
             assert len(self.rgb_files) == len(self.lbl_files)
             self.truth_val = 255
-        if ds_name == 'mnih':
+        elif ds_name == 'mnih':
             from data.mnih import preprocess
             self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
             assert len(self.rgb_files) == len(self.lbl_files)
