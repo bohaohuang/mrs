@@ -5,6 +5,7 @@ https://github.com/pytorch/vision/blob/master/torchvision/models/squeezenet.py
 
 # Built-in
 import math
+from collections import OrderedDict
 
 # Libs
 
@@ -12,7 +13,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.init as init
-from torch.utils.model_zoo import load_url as load_state_dict_from_url
+from torch.hub import load_state_dict_from_url
 from torch.utils import model_zoo
 
 # Own modules
@@ -135,6 +136,11 @@ def _squeezenet(version, pretrained, strides, inter_features, progress, **kwargs
         arch = 'squeezenet' + version
         state_dict = load_state_dict_from_url(model_urls[arch],
                                               progress=progress)
+        # The final classification block of squeezenet is removed, corresponding weight and bias should also be removed
+        cls_keys = [key for key in state_dict.items() if 'classifier' in key]
+        for key in cls_keys: del state_dict[key]
+        # Loaded pretrained state_dict has different prefixes for state_dict which need to be renamed
+        state_dict = OrderedDict(zip(model.state_dict.keys(), state_dict.values()))
         model.load_state_dict(state_dict)
     return model
 
@@ -160,3 +166,9 @@ def squeezenet1_1(pretrained=False, strides=(2, 2, 2, 2), inter_features=True,  
         progress (bool): If True, displays a progress bar of the download to stderr
     """
     return _squeezenet('1_1', pretrained, strides, inter_features,  progress, **kwargs)
+
+
+if __name__ == '__main__':
+    model = squeezenet1_0(False, (2, 2, 2, 2), True)
+    from torchsummary import summary
+    summary(model, (3, 512, 512), device='cpu')
