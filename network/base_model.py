@@ -63,6 +63,7 @@ class Base(nn.Module):
         :param kwargs:
         :return:
         """
+        # TODO add self.lbl_margin into consideration and remove corresponding functions in unet class
         loss_dict = {}
         for img_cnt, (image, label) in enumerate(tqdm(data_loader, desc='{}'.format(phase))):
             image = Variable(image, requires_grad=True).to(device)
@@ -77,6 +78,9 @@ class Base(nn.Module):
                     pred = self.forward(image)
 
             # loss
+            # crop margin if necessary & reduce channel dimension
+            if self.lbl_margin > 0:
+                label = label[:, :, self.lbl_margin:-self.lbl_margin, self.lbl_margin:-self.lbl_margin]
             for c_cnt, c in enumerate(criterions):
                 loss = c(pred, label)
                 if phase == 'train' and c_cnt == bp_loss_idx:
@@ -86,6 +90,8 @@ class Base(nn.Module):
 
             if save_image and img_cnt == 0:
                 img_image = image.detach().cpu().numpy()
+                if self.lbl_margin > 0:
+                    img_image = img_image[:,:, self.lbl_margin: -self.lbl_margin, self.lbl_margin: -self.lbl_margin]
                 lbl_image = label.cpu().numpy()
                 pred_image = pred.detach().cpu().numpy()
                 banner = vis_utils.make_tb_image(img_image, lbl_image, pred_image, self.n_class, mean, std)
@@ -131,6 +137,8 @@ class Base(nn.Module):
                     pred = self.forward(image)
 
             # loss
+            if self.lbl_margin > 0:
+                label = label[:, :, self.lbl_margin:-self.lbl_margin, self.lbl_margin:-self.lbl_margin]
             for c_cnt, c in enumerate(criterions):
                 loss = c(pred, label)
                 if phase == 'train' and c_cnt == bp_loss_idx:
@@ -140,6 +148,8 @@ class Base(nn.Module):
 
             if save_image and img_cnt == 0:
                 img_image = image.detach().cpu().numpy()
+                if self.lbl_margin > 0:
+                    img_image = img_image[:,:, self.lbl_margin: -self.lbl_margin, self.lbl_margin: -self.lbl_margin]
                 lbl_image = label.cpu().numpy()
                 pred_image = pred.detach().cpu().numpy()
                 banner = vis_utils.make_tb_image(img_image, lbl_image, pred_image, self.n_class, mean, std)
