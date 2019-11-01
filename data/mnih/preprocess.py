@@ -16,8 +16,8 @@ from data import data_utils
 from mrs_utils import misc_utils
 
 # Settings
-DATA_DIR = '/data/users/wh145/mass_roads/'
-SPLITS = os.listdir(DATA_DIR) # train, valid, test
+DATA_DIR = '/data/users/wh145/mnih/'
+SPLITS = ['train', 'valid'] # test set will be grabbed by get_images() and processed during testing
 MODES = os.listdir(os.path.join(DATA_DIR, SPLITS[0])) # sat (input), map (target)
 
 def patch_tile(rgb_file, gt_file, patch_size, pad, overlap):
@@ -54,13 +54,13 @@ def patch_mnih(data_dir, save_dir, patch_size, pad, overlap):
     :return:
     """
     
-    for dataset in tqdm(SPLITS, desc='Train-valid-test split'):
+    for dataset in tqdm(SPLITS, desc='Train-valid split'):
         FILENAMES = [
             fname.split('.')[0] for fname in os.listdir(os.path.join(DATA_DIR, dataset, MODES[0]))
         ]
         NUM_FILES = len(FILENAMES)    
         # create folders and files
-        patch_dir = os.path.join(save_dir, dataset)
+        patch_dir = save_dir
         misc_utils.make_dir_if_not_exist(patch_dir)
         record_file = open(os.path.join(save_dir, 'file_list_{}.txt'.format(dataset)), 'w+')
 
@@ -77,7 +77,7 @@ def patch_mnih(data_dir, save_dir, patch_size, pad, overlap):
         record_file.close()
 
 
-def get_images(data_dir, dataset='test'):
+def get_images(data_dir=DATA_DIR, dataset='test'):
     """
     Stand-alone function to be used in evaluate.py.
     :param data_dir
@@ -85,21 +85,19 @@ def get_images(data_dir, dataset='test'):
     """    
     rgb_files = []
     gt_files = []
-    with open(os.path.join(data_dir, 'file_list_{}.txt'.format(dataset)), 'r') as f:
-        for _, line in enumerate(f):
-            rgb, gt = line.replace('\n', '').split(' ')
-            rgb_files.append(os.path.join(data_dir, rgb))
-            gt_files.append(os.path.join(data_dir, gt))
-        f.close()
+    file_list = os.listdir(os.path.join(data_dir, dataset, 'map'))
+    for fname in file_list:
+        gt_files.append(os.path.join(data_dir, dataset, fname))
+        rgb_files.append(os.path.join(data_dir, dataset, fname.replace('tif', 'tiff')))
     return rgb_files, gt_files
 
 if __name__ == '__main__':
     ps = 512
     pd = 0
     ol = 0
-    save_dir = r'/data/users/wh145/processed_mass_roads/'
+    save_dir = r'/data/users/wh145/processed_mnih/'
     misc_utils.make_dir_if_not_exist(save_dir)
-    patch_mnih(data_dir=r'/data/users/wh145/mass_roads',
+    patch_mnih(data_dir=DATA_DIR,
                 save_dir=save_dir,
                 patch_size=(ps, ps),
                 pad=pd, overlap=ol)
