@@ -14,7 +14,6 @@ model/log_pre/
 .idea/
 tasks/
 *.log
-do.sh
 
 # C extensions
 *.so
