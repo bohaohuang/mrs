@@ -70,6 +70,7 @@ class SqueezeNet(nn.Module):
     def __init__(self, version='1_0', strides=(2, 2, 2, 2), inter_features=False, fire_cfg=fire_cfg):
         super(SqueezeNet, self).__init__()
         self.inter_features = inter_features
+        self.chans = [a[-1][0] for a in fire_cfg[version]][::-1]
         if version == '1_0':
             self.layer_0 = nn.Sequential(
                 nn.Conv2d(3, 96, kernel_size=7, stride=strides[0]),
@@ -96,7 +97,7 @@ class SqueezeNet(nn.Module):
         else:
             raise ValueError("Unsupported SqueezeNet version {version}:"
                              "1_0 or 1_1 expected".format(version=version))
-
+        self.chans.extend([self.layer_0[0].out_channels])
         # Final convolutional block for classification is removed
 
         for m in self.modules():
@@ -137,10 +138,10 @@ def _squeezenet(version, pretrained, strides, inter_features, progress, **kwargs
         state_dict = load_state_dict_from_url(model_urls[arch],
                                               progress=progress)
         # The final classification block of squeezenet is removed, corresponding weight and bias should also be removed
-        cls_keys = [key for key in state_dict.items() if 'classifier' in key]
+        cls_keys = [key for key in state_dict if 'classifier' in key]
         for key in cls_keys: del state_dict[key]
         # Loaded pretrained state_dict has different prefixes for state_dict which need to be renamed
-        state_dict = OrderedDict(zip(model.state_dict.keys(), state_dict.values()))
+        state_dict = OrderedDict(zip(model.state_dict().keys(), state_dict.values()))
         model.load_state_dict(state_dict)
     return model
 
