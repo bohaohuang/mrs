@@ -1,7 +1,7 @@
 {
-  "gpu": "6,7",
-  "encoder_name": "vgg16",
-  "decoder_name": "unet",
+  "gpu": "1",
+  "encoder_name": "resnet50",
+  "decoder_name": "dlinknet",
   "random_seed": 1,
   "dataset": {
     "ds_name": "mnih",
@@ -9,9 +9,9 @@
     "class_num": 2,
     "mean" : "(0.485, 0.456, 0.406)",
     "std" : "(0.229, 0.224, 0.225)",
-    "data_dir": "/home/wh145/processed_mnih/",
-    "train_file": "/home/wh145/processed_mnih/file_list_train.txt",
-    "valid_file": "/home/wh145/processed_mnih/file_list_valid.txt",
+    "data_dir": "/home/wh145/processed_mass_roads/",
+    "train_file": "/home/wh145/processed_mass_roads/file_list_train.txt",
+    "valid_file": "/home/wh145/processed_mass_roads/file_list_valid.txt",
     "batch_size": 5,
     "num_workers": 8
   },
@@ -25,9 +25,9 @@
     "criterion_name": "xent,iou",
     "bp_loss_idx": 0,
     "epochs": 80,
-    "save_epoch": 20,
+    "save_epoch": 80,
     "resume_epoch": 0,
     "finetune_dir": "None",
-    "save_root": "/home/wh145/models"
+    "save_root": "/hdd6/Models/mrs/dev"
   }
 }

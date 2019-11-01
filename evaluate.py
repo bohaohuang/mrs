@@ -17,9 +17,9 @@ from network import network_io, network_utils
 
 # Settings
 GPU = 0
-MODEL_DIR = r'/home/wh145/models/ecvgg16_dcunet_dsmnih_lre1e-03_lrd1e-02_ep80_bs5_ds50_dr0p1'
-LOAD_EPOCH = 80
-DATA_DIR = r'/home/wh145/processed_mnih'
+MODEL_DIR = r'/home/wh145/models/ecvgg16_dcunet_dsmass_roads_lre1e-03_lrd1e-03_ep20_bs5_ds2_dr0p1/'
+LOAD_EPOCH = 19
+DATA_DIR = r'/home/wh145/processed_mass_roads'
 PATCHS_SIZE = (512, 512)
 
 
@@ -44,7 +44,7 @@ def main():
         A.Normalize(mean=mean, std=std),
         ToTensorV2(),
     ])
-    save_dir = os.path.join(r'/home/wh145/results/mrs/mnih', os.path.basename(network_utils.unique_model_name(args)))
+    save_dir = os.path.join(r'/home/wh145/results/mrs/mass_roads', os.path.basename(network_utils.unique_model_name(args)))
     evaluator = network_utils.Evaluator('mnih', DATA_DIR, tsfm_valid, device)
     evaluator.evaluate(model, PATCHS_SIZE, 2*model.lbl_margin,
                        pred_dir=save_dir, report_dir=save_dir)
