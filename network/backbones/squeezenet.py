@@ -69,10 +69,13 @@ class Fire(nn.Module):
 
 class SqueezeNet(nn.Module):
 
-    def __init__(self, version='1_0', strides=(2, 2, 2, 2), inter_features=False, fire_cfg=fire_cfg):
+    def __init__(self, version='1_0', strides=(2, 2, 2, 2),
+                 inter_features=False, fire_cfg=fire_cfg, n_classes=1000):
         super(SqueezeNet, self).__init__()
         self.inter_features = inter_features
+        self.n_classes = n_classes
         self.chans = [a[-1][0] for a in fire_cfg[version]][::-1]
+
         if version == '1_0':
             self.layer_0 = nn.Sequential(
                 nn.Conv2d(3, 96, kernel_size=7, stride=strides[0]),
@@ -99,12 +102,22 @@ class SqueezeNet(nn.Module):
         else:
             raise ValueError("Unsupported SqueezeNet version {version}:"
                              "1_0 or 1_1 expected".format(version=version))
-        self.chans.extend([self.layer_0[0].out_channels])
-        # Final convolutional block for classification is removed
+        
+        final_conv = nn.Conv2d(512, n_classes, kernel_size=1)
+        self.layer_4 = nn.Sequential(
+            nn.Dropout(p=0.5),
+            final_conv,
+            nn.ReLU(inplace=True)
+        )
+        self.final_pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.chans = [self.n_classes] + self.chans.extend([self.layer_0[0].out_channels])
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                init.kaiming_uniform_(m.weight)
+                if m is final_conv:
+                    init.normal_(m.weight, mean=0.0, std=0.01)
+                else:
+                    init.kaiming_uniform_(m.weight)
                 if m.bias is not None:
                     init.constant_(m.bias, 0)
 
@@ -122,13 +135,17 @@ class SqueezeNet(nn.Module):
             layer_1 = self.layer_1(layer_0)
             layer_2 = self.layer_2(layer_1)
             layer_3 = self.layer_3(layer_2)
+            layer_4 = self.layer_4(layer_3)
+            output = self.final_pool(layer_4)
 
-            return layer_0, layer_1, layer_2, layer_3
+            return layer_0, layer_1, layer_2, layer_3, layer_4
         else:
             x = self.layer_0(x)
             x = self.layer_1(x)
             x = self.layer_2(x)
             x = self.layer_3(x)
+            x = self.layer_4(x)
+            x = self.final_pool(x)
 
             return x
 
@@ -139,9 +156,6 @@ def _squeezenet(version, pretrained, strides, inter_features, progress, **kwargs
         arch = 'squeezenet' + version
         state_dict = load_state_dict_from_url(model_urls[arch],
                                               progress=progress)
-        # The final classification block of squeezenet is removed, corresponding weight and bias should also be removed
-        cls_keys = [key for key in state_dict if 'classifier' in key]
-        for key in cls_keys: del state_dict[key]
         # Loaded pretrained state_dict has different prefixes for state_dict which need to be renamed
         state_dict = OrderedDict(zip(model.state_dict().keys(), state_dict.values()))
         model.load_state_dict(state_dict)
