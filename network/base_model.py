@@ -53,7 +53,10 @@ class Base(nn.Module):
         :param kwargs:
         :return:
         """
-        return [{'params': self.parameters(), 'lr': learn_rate}]
+        return [
+            {'params': self.encoder.parameters(), 'lr': learn_rate[0]},
+            {'params': self.decoder.parameters(), 'lr': learn_rate[1]}
+        ]
 
     def step(self, data_loader, device, optm, phase, criterions, bp_loss_idx=0, save_image=True,
              mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):

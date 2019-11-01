@@ -12,7 +12,7 @@ import os
 
 # Own modules
 from mrs_utils import misc_utils, metric_utils
-from network import unet, pspnet, dlinknet, network_utils
+from network import unet, pspnet, dlinknet, deeplabv3, network_utils
 
 
 def create_model(args):
@@ -33,6 +33,8 @@ def create_model(args):
         model = pspnet.PSPNet(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'])
     elif args['decoder_name'] == 'dlinknet':
         model = dlinknet.DLinkNet(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'])
+    elif args['decoder_name'] == 'deeplabv3':
+        model = deeplabv3.DeepLabV3(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'])
     else:
         raise NotImplementedError('Decoder structure {} is not supported'.format(args['decoder_name']))
     return model
