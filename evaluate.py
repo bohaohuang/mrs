@@ -17,9 +17,9 @@ from network import network_io, network_utils
 
 # Settings
 GPU = 0
-MODEL_DIR = r'/home/wh145/models/ecvgg16_dcunet_dsmass_roads_lre1e-03_lrd1e-03_ep20_bs5_ds2_dr0p1/'
-LOAD_EPOCH = 19
-DATA_DIR = r'/home/wh145/processed_mass_roads'
+MODEL_DIR = r'/home/wh145/models/ecvgg16_dcunet_dsmnih_lre1e-03_lrd1e-02_ep80_bs5_ds50_dr0p1'
+LOAD_EPOCH = 80
+DATA_DIR = r'/home/wh145/mnih'
 PATCHS_SIZE = (512, 512)
 
 
