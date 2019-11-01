@@ -6,6 +6,8 @@ https://github.com/pytorch/vision/blob/master/torchvision/models/squeezenet.py
 # Built-in
 import math
 from collections import OrderedDict
+import sys
+sys.path.append(r'C:\Users\wh145\Documents\mrs')
 
 # Libs
 
@@ -17,7 +19,7 @@ from torch.hub import load_state_dict_from_url
 from torch.utils import model_zoo
 
 # Own modules
-from network import network_utils
+# from network import network_utils
 
 
 model_urls = {
@@ -170,6 +172,7 @@ def squeezenet1_1(pretrained=False, strides=(2, 2, 2, 2), inter_features=True,  
 
 
 if __name__ == '__main__':
-    model = squeezenet1_0(False, (2, 2, 2, 2), True)
+    model = squeezenet1_0(True, (2, 2, 2, 2), True)
     from torchsummary import summary
     summary(model, (3, 512, 512), device='cpu')
+    
