@@ -25,7 +25,7 @@
 | ResNet50     | UNet         | DeepGlobe | Building | 79.43       | 671.4MB | [Box](https://duke.box.com/s/dtzq771vkp20wyne0vaiwtrmcc0lrzyy) |
 | ResNet101    | UNet         | DeepGlobe | Building | 79.43       | 671.4MB | [Box](https://duke.box.com/s/3caceshq6jhnyhn28rqdn4f7eg33ciq0) |
 
-## TODOs
+## Features
 - [ ] Encoder Structures:
     - [X] [VGG](./network/backbones/vggnet.py)
     - [X] [ResNet](./network/backbones/resnet.py)
@@ -36,7 +36,7 @@
     - [X] [UNet](./network/unet.py)
     - [X] [DLinkNet](./network/dlinknet.py)
     - [X] [PSPNet](./network/pspnet.py)
-    - [ ] DeepLabV3
+    - [X] [DeepLabV3+](./network/deeplabv3.py)
 - [ ] Different Losses:
     - [X] Xent
     - [X] Jaccard Approximation
@@ -47,10 +47,8 @@
 - [ ] Evaluation
     - [X] Dataset Evaluator
     - [X] Evaluate Report & Prediction Map
-- [X] Toy Dataset
-- [X] Config as json file
-- [X] Check flex loading function
 - [ ] Results visualization
 - [ ] Class weights on criterions
 ## Known Bugs
 - [ ] Unable to do model-wise data parallel
+- [ ] [Failed to load models that trained on multiple gpus](https://github.com/bohaohuang/mrs/issues/8)
