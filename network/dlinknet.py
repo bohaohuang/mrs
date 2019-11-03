@@ -109,9 +109,3 @@ class DLinkNet(base_model.Base):
         # part b and c: center dilation + decoder
         ftr = self.decoder(ftr, layers, input_size)
         return ftr
-
-    def set_train_params(self, learn_rate, **kwargs):
-        return [
-            {'params': self.encoder.parameters(), 'lr': learn_rate[0]},
-            {'params': self.decoder.parameters(), 'lr': learn_rate[1]}
-        ]
