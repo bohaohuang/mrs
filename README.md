@@ -21,6 +21,7 @@
 | ResNet34     | PSPNet       | Inria     | Building | 76.11       | 221.2MB | [Box](https://duke.box.com/s/eu49tfvllgefxf8ergh1b8mv7y4vjifz) |
 | ResNet50     | PSPNet       | Inria     | Building | 77.46       | 418.3MB | [Box](https://duke.box.com/s/kxm9r269csgxfosrui5jnqqir54ttd59) |
 | ResNet101    | PSPNet       | Inria     | Building | 78.55       | 563.5MB | [Box](https://duke.box.com/s/zx2yfyrekvi0dk84l0qpo6xy5le1qsex) |
+| ResNet34     | DLinkNet     | Inria     | Building | 75.67       | 248.5MB | [Box](https://duke.box.com/s/634lp66fd7s9wxphnvtr5l055xr57pas) |
 | ResNet50     | DLinkNet     | Inria     | Building | 77.08       | 1.4GB   | [Box](https://duke.box.com/s/1tn7zcuvfknkxfdb9aa0lye0pyn8n056) |
 | ResNet50     | UNet         | DeepGlobe | Building | 79.43       | 671.4MB | [Box](https://duke.box.com/s/dtzq771vkp20wyne0vaiwtrmcc0lrzyy) |
 | ResNet101    | UNet         | DeepGlobe | Building | 79.43       | 671.4MB | [Box](https://duke.box.com/s/3caceshq6jhnyhn28rqdn4f7eg33ciq0) |
