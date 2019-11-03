@@ -165,12 +165,6 @@ class UNet(base_model.Base):
         pred = self.decoder(ftr, layers)
         return pred
 
-    def set_train_params(self, learn_rate, **kwargs):
-        return [
-            {'params': self.encoder.parameters(), 'lr': learn_rate[0]},
-            {'params': self.decoder.parameters(), 'lr': learn_rate[1]}
-        ]
-
 
 if __name__ == '__main__':
     from network import network_utils

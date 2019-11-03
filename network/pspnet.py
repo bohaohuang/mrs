@@ -96,12 +96,6 @@ class PSPNet(base_model.Base):
         pred = self.decoder(ftr)
         return pred
 
-    def set_train_params(self, learn_rate, **kwargs):
-        return [
-            {'params': self.encoder.parameters(), 'lr': learn_rate[0]},
-            {'params': self.decoder.parameters(), 'lr': learn_rate[1]}
-        ]
-
 
 if __name__ == '__main__':
     vgg16 = PSPNet(2, encoder_name='resnet152')
