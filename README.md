@@ -25,6 +25,7 @@
 | ResNet50     | DLinkNet     | Inria     | Building | 77.08       | 1.4GB   | [Box](https://duke.box.com/s/1tn7zcuvfknkxfdb9aa0lye0pyn8n056) |
 | ResNet50     | UNet         | DeepGlobe | Building | 79.43       | 671.4MB | [Box](https://duke.box.com/s/dtzq771vkp20wyne0vaiwtrmcc0lrzyy) |
 | ResNet101    | UNet         | DeepGlobe | Building | 79.43       | 671.4MB | [Box](https://duke.box.com/s/3caceshq6jhnyhn28rqdn4f7eg33ciq0) |
+| ResNet101    | DeepLabV3+   | Inria     | Building | 79.17       | 464.6MB | [Box](https://duke.box.com/s/16wf4r4uylc493yo4w7b8qsvkvokznld) |
 
 ## Features
 - [ ] Encoder Structures:
