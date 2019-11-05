@@ -23,29 +23,6 @@ VAL_CITY = ['austin', 'chicago', 'kitsap', 'tyrol-w', 'vienna']
 VAL_IDS = list(range(1, 6))
 
 
-def patch_tile(rgb_file, gt_file, patch_size, pad, overlap):
-    """
-    Extract the given rgb and gt tiles into patches
-    :param rgb_file: path to the rgb file
-    :param gt_file: path to the gt file
-    :param patch_size: size of the patches, should be a tuple of (h, w)
-    :param pad: #pixels to be padded around each tile, should be either one element or four elements
-    :param overlap: #overlapping pixels between two patches in both vertical and horizontal direction
-    :return: rgb and gt patches as well as coordinates
-    """
-    rgb = misc_utils.load_file(rgb_file)
-    gt = misc_utils.load_file(gt_file)
-    np.testing.assert_array_equal(rgb.shape[:2], gt.shape)
-    grid_list = data_utils.make_grid(np.array(rgb.shape[:2]) + 2 * pad, patch_size, overlap)
-    if pad > 0:
-        rgb = data_utils.pad_image(rgb, pad)
-        gt = data_utils.pad_image(gt, pad)
-    for y, x in grid_list:
-        rgb_patch = data_utils.crop_image(rgb, y, x, patch_size[0], patch_size[1])
-        gt_patch = data_utils.crop_image(gt, y, x, patch_size[0], patch_size[1])
-        yield rgb_patch, gt_patch, y, x
-
-
 def patch_inria(data_dir, save_dir, patch_size, pad, overlap):
     """
     Preprocess the standard inria dataset
@@ -66,7 +43,7 @@ def patch_inria(data_dir, save_dir, patch_size, pad, overlap):
         for tile_id in tqdm(range(1, 37), desc='Tile-wise', leave=False):
             rgb_filename = os.path.join(data_dir, 'image', '{}{}.tif'.format(city_name, tile_id))
             gt_filename = os.path.join(data_dir, 'truth', '{}{}.tif'.format(city_name, tile_id))
-            for rgb_patch, gt_patch, y, x in patch_tile(rgb_filename, gt_filename, patch_size, pad, overlap):
+            for rgb_patch, gt_patch, y, x in data_utils.patch_tile(rgb_filename, gt_filename, patch_size, pad, overlap):
                 rgb_patchname = '{}{}_y{}x{}.jpg'.format(city_name, tile_id, int(y), int(x))
                 gt_patchname = '{}{}_y{}x{}.png'.format(city_name, tile_id, int(y), int(x))
                 misc_utils.save_file(os.path.join(patch_dir, rgb_patchname), rgb_patch.astype(np.uint8))
