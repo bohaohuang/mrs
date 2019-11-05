@@ -88,7 +88,11 @@ class PSPNet(base_model.Base):
         super(PSPNet, self).__init__()
         self.n_class = n_class
         self.encoder_name = misc_utils.stem_string(encoder_name)
-        self.encoder = encoders.models(self.encoder_name, pretrained, (2, 2, 2, 1, 1), False)
+        if 'squeeze' in self.encoder_name:
+            strides =(1, 2, 2, 2, 1)
+        else:
+            strides = (2, 2, 2, 1, 1)
+        self.encoder = encoders.models(self.encoder_name, pretrained, strides, False)
         self.decoder = PSPDecoder(n_class, self.encoder.chans[0], out_chan, bin_sizes, drop_rate)
 
     def forward(self, x):
