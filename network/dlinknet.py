@@ -6,16 +6,12 @@
 # Built-in
 
 # Libs
-from tqdm import tqdm
 
-#Pytorch
-import torch
+# Pytorch
 from torch import nn
-from torch.autograd import Variable
 
 # Own modules
 from network import base_model
-from mrs_utils import vis_utils
 from network.backbones import encoders
 
 
@@ -63,7 +59,7 @@ class DLinkNetDecoder(base_model.Base):
     This module defines part (b) and (c) in the D-LinkNet paper
     Grouping them together to match the MRS naming convention
     """
-    def __init__(self, chans, n_class):
+    def __init__(self, chans, n_class, final_upsample=True):
         super(DLinkNetDecoder, self).__init__()
         self.chans = chans
         self.center_dilation = CenterDilation(self.chans[0])
@@ -71,10 +67,13 @@ class DLinkNetDecoder(base_model.Base):
         self.upsample_2 = UpSample(self.chans[1], self.chans[2])
         self.upsample_3 = UpSample(self.chans[2], self.chans[3])
         self.upsample_4 = UpSample(self.chans[3], self.chans[4])
-        self.tconv = nn.ConvTranspose2d(self.chans[4], self.chans[4]//2, 4, 2, 1)
+        if final_upsample:
+            self.tconv = nn.ConvTranspose2d(self.chans[4], self.chans[4]//2, 4, 2, 1)
+        else:
+            self.tconv = nn.Conv2d(self.chans[4], self.chans[4]//2, 3, 1, 1)
         self.classify = nn.Conv2d(self.chans[4]//2, n_class, 3, 1, 1)
 
-    def forward(self, ftr, layers):
+    def forward(self, ftr, layers, input_size):
         ftr = self.center_dilation(ftr)
         ftr = self.upsample_1(ftr)
         ftr = ftr + layers[0]
@@ -97,24 +96,16 @@ class DLinkNet(base_model.Base):
         self.n_class = n_class
         self.encoder_name = encoder_name
         self.encoder = encoders.models(self.encoder_name, pretrained, (2, 2, 2, 2, 2), True)
-        self.decoder = DLinkNetDecoder(self.encoder.chans, n_class)
+        if 'vgg' in self.encoder_name:
+            self.decoder = DLinkNetDecoder(self.encoder.chans, n_class, final_upsample=False)
+        else:
+            self.decoder = DLinkNetDecoder(self.encoder.chans, n_class)
 
     def forward(self, x):
         # part a: encoder
+        input_size = x.size()[2]
         x = self.encoder(x)
         ftr, layers = x[0], x[1:-1]
         # part b and c: center dilation + decoder
-        ftr = self.decoder(ftr, layers)
+        ftr = self.decoder(ftr, layers, input_size)
         return ftr
-
-    def set_train_params(self, learn_rate, **kwargs):
-        return [
-            {'params': self.encoder.parameters(), 'lr': learn_rate[0]},
-            {'params': self.decoder.parameters(), 'lr': learn_rate[1]}
-        ]
-
-
-if __name__ == '__main__':
-    from network import network_utils
-
-    network_utils.network_summary(DLinkNet, (3, 512, 512), n_class=2, encoder_name='vgg16_bn')
