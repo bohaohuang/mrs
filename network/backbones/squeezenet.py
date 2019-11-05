@@ -6,8 +6,6 @@ https://github.com/pytorch/vision/blob/master/torchvision/models/squeezenet.py
 # Built-in
 import math
 from collections import OrderedDict
-import sys
-sys.path.append(r'C:\Users\wh145\Documents\mrs')
 
 # Libs
 
@@ -69,48 +67,49 @@ class Fire(nn.Module):
 
 class SqueezeNet(nn.Module):
 
-    def __init__(self, version='1_0', strides=(2, 2, 2, 2),
-                 inter_features=False, fire_cfg=fire_cfg, n_classes=1000):
+    def __init__(self, version='1_0', strides=(2, 2, 2, 2, 2),
+                 inter_features=False, fire_cfg=fire_cfg, n_class=1000):
         super(SqueezeNet, self).__init__()
         self.inter_features = inter_features
-        self.n_classes = n_classes
-        self.chans = [a[-1][0] for a in fire_cfg[version]][::-1]
+        self.n_class = n_class
+        self.chans = [a[-1][-1] + a[-1][-2] for a in fire_cfg[version]][::-1]
 
         if version == '1_0':
-            self.layer_0 = nn.Sequential(
-                nn.Conv2d(3, 96, kernel_size=7, stride=strides[0]),
+
+            self.layer0 = nn.Sequential(
+                nn.Conv2d(3, 96, kernel_size=7, stride=strides[0], padding=3),
                 nn.ReLU(inplace=True)
             )
-            self.layer_1 = self._make_layer(
+            self.layer1 = self._make_layer(
                 fire_cfg[version][0], stride=strides[1])
-            self.layer_2 = self._make_layer(
+            self.layer2 = self._make_layer(
                 fire_cfg[version][1], stride=strides[2])
-            self.layer_3 = self._make_layer(
+            self.layer3 = self._make_layer(
                 fire_cfg[version][2], stride=strides[3])
 
         elif version == '1_1':
-            self.layer_0 = nn.Sequential(
-                nn.Conv2d(3, 64, kernel_size=3, stride=2),
+
+            self.layer0 = nn.Sequential(
+                nn.Conv2d(3, 64, kernel_size=3, stride=strides[0], padding=1),
                 nn.ReLU(inplace=True)
             )
-            self.layer_1 = self._make_layer(
+            self.layer1 = self._make_layer(
                 fire_cfg[version][0], stride=strides[1])
-            self.layer_2 = self._make_layer(
+            self.layer2 = self._make_layer(
                 fire_cfg[version][1], stride=strides[2])
-            self.layer_3 = self._make_layer(
+            self.layer3 = self._make_layer(
                 fire_cfg[version][2], stride=strides[3])
         else:
             raise ValueError("Unsupported SqueezeNet version {version}:"
                              "1_0 or 1_1 expected".format(version=version))
         
-        final_conv = nn.Conv2d(512, n_classes, kernel_size=1)
-        self.layer_4 = nn.Sequential(
+        final_conv = nn.Conv2d(512, self.n_class, kernel_size=1, stride=strides[4])
+        self.layer4 = nn.Sequential(
             nn.Dropout(p=0.5),
             final_conv,
             nn.ReLU(inplace=True)
         )
-        self.final_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.chans = [self.n_classes] + self.chans.extend([self.layer_0[0].out_channels])
+        self.chans = [self.n_class] + self.chans + [self.layer0[0].out_channels]
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -123,7 +122,7 @@ class SqueezeNet(nn.Module):
 
     def _make_layer(self, fire_cfg, kernel_size=3, stride=2, ceil_mode=True):
         layers = []
-        layers.append(nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True))
+        layers.append(nn.MaxPool2d(kernel_size=kernel_size, stride=stride, ceil_mode=ceil_mode))
         for cfg in fire_cfg:
             layers.append(Fire(*cfg))
 
@@ -131,21 +130,19 @@ class SqueezeNet(nn.Module):
 
     def forward(self, x):
         if self.inter_features:
-            layer_0 = self.layer_0(x)
-            layer_1 = self.layer_1(layer_0)
-            layer_2 = self.layer_2(layer_1)
-            layer_3 = self.layer_3(layer_2)
-            layer_4 = self.layer_4(layer_3)
-            output = self.final_pool(layer_4)
+            layer0 = self.layer0(x)
+            layer1 = self.layer1(layer0)
+            layer2 = self.layer2(layer1)
+            layer3 = self.layer3(layer2)
+            layer4 = self.layer4(layer3)
 
-            return layer_0, layer_1, layer_2, layer_3, layer_4
+            return layer4, layer3, layer2, layer1, layer0
         else:
-            x = self.layer_0(x)
-            x = self.layer_1(x)
-            x = self.layer_2(x)
-            x = self.layer_3(x)
-            x = self.layer_4(x)
-            x = self.final_pool(x)
+            x = self.layer0(x)
+            x = self.layer1(x)
+            x = self.layer2(x)
+            x = self.layer3(x)
+            x = self.layer4(x)
 
             return x
 
@@ -162,7 +159,7 @@ def _squeezenet(version, pretrained, strides, inter_features, progress, **kwargs
     return model
 
 
-def squeezenet1_0(pretrained=False, strides=(2, 2, 2, 2), inter_features=True,  progress=True, **kwargs):
+def squeezenet1_0(pretrained=False, strides=(2, 2, 2, 2, 2), inter_features=True,  progress=True, **kwargs):
     r"""SqueezeNet model architecture from the `"SqueezeNet: AlexNet-level
     accuracy with 50x fewer parameters and <0.5MB model size"
     <https://arxiv.org/abs/1602.07360>`_ paper.
@@ -173,7 +170,7 @@ def squeezenet1_0(pretrained=False, strides=(2, 2, 2, 2), inter_features=True,  
     return _squeezenet('1_0', pretrained, strides, inter_features,  progress, **kwargs)
 
 
-def squeezenet1_1(pretrained=False, strides=(2, 2, 2, 2), inter_features=True,  progress=True, **kwargs):
+def squeezenet1_1(pretrained=False, strides=(2, 2, 2, 2, 2), inter_features=True,  progress=True, **kwargs):
     r"""SqueezeNet 1.1 model from the `official SqueezeNet repo
     <https://github.com/DeepScale/SqueezeNet/tree/master/SqueezeNet_v1.1>`_.
     SqueezeNet 1.1 has 2.4x less computation and slightly fewer parameters
@@ -186,7 +183,7 @@ def squeezenet1_1(pretrained=False, strides=(2, 2, 2, 2), inter_features=True,  
 
 
 if __name__ == '__main__':
-    model = squeezenet1_0(True, (2, 2, 2, 2), True)
+    model = squeezenet1_1(False, (2, 2, 2, 2, 2), True)
     from torchsummary import summary
     summary(model, (3, 512, 512), device='cpu')
     
