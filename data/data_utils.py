@@ -5,10 +5,12 @@
 
 # Built-in
 import os
+from glob import glob
 
 # Libs
 import numpy as np
 import matplotlib.pyplot as plt
+from natsort import natsorted
 from torchvision import transforms
 
 # Own modules
@@ -120,6 +122,44 @@ def visualize(rgb, gt, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.255)):
     plt.imshow(gt.astype(np.uint8))
     plt.tight_layout()
     plt.show()
+
+
+def get_img_lbl(data_dir, img_ext, lbl_ext):
+    """
+    Get image and label pair in a given pair
+    The image and label are identified by their given extensions
+    :param data_dir: the directory of the dataset
+    :param img_ext: extension of the image files
+    :param lbl_ext: extension of the label files
+    :return: list of image and label pairs
+    """
+    img_files = natsorted(glob(os.path.join(data_dir, '*{}'.format(img_ext))))
+    lbl_files = natsorted(glob(os.path.join(data_dir, '*{}'.format(lbl_ext))))
+    assert len(img_files) == len(lbl_files)
+    return [(img_file, lbl_file) for (img_file, lbl_file) in zip(img_files, lbl_files)]
+
+
+def patch_tile(rgb_file, gt_file, patch_size, pad, overlap):
+    """
+    Extract the given rgb and gt tiles into patches
+    :param rgb_file: path to the rgb file
+    :param gt_file: path to the gt file
+    :param patch_size: size of the patches, should be a tuple of (h, w)
+    :param pad: #pixels to be padded around each tile, should be either one element or four elements
+    :param overlap: #overlapping pixels between two patches in both vertical and horizontal direction
+    :return: rgb and gt patches as well as coordinates
+    """
+    rgb = misc_utils.load_file(rgb_file)
+    gt = misc_utils.load_file(gt_file)
+    np.testing.assert_array_equal(rgb.shape[:2], gt.shape)
+    grid_list = make_grid(np.array(rgb.shape[:2]) + 2 * pad, patch_size, overlap)
+    if pad > 0:
+        rgb = pad_image(rgb, pad)
+        gt = pad_image(gt, pad)
+    for y, x in grid_list:
+        rgb_patch = crop_image(rgb, y, x, patch_size[0], patch_size[1])
+        gt_patch = crop_image(gt, y, x, patch_size[0], patch_size[1])
+        yield rgb_patch, gt_patch, y, x
 
 
 def create_toy_set(data_dir, train_file='file_list_train.txt', valid_file='file_list_valid.txt',

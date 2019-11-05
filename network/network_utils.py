@@ -258,6 +258,11 @@ class Evaluator:
             self.rgb_files, self.lbl_files = preprocess.get_images(data_dir)
             assert len(self.rgb_files) == len(self.lbl_files)
             self.truth_val = 1
+        elif ds_name == 'deepgloberoad':
+            from data.deepgloberoad import preprocess
+            self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
+            assert len(self.rgb_files) == len(self.lbl_files)
+            self.truth_val = 255
         elif ds_name == 'mnih':
             from data.mnih import preprocess
             self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
@@ -281,6 +286,11 @@ class Evaluator:
             # read data
             rgb = misc_utils.load_file(rgb_file)[:, :, :3]
             lbl = misc_utils.load_file(lbl_file)
+            # if label has multiple channels, only keep the first channel, this is not elegant but it is useful to deal
+            # with deepglobe road
+            # TODO make this an option when selecting dataset
+            if len(lbl.shape) == 3:
+                lbl = lbl[:, :, 0]
 
             # evaluate on tiles
             tile_dim = rgb.shape[:2]
