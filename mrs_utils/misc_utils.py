@@ -97,7 +97,11 @@ def load_file(file_name, **kwargs):
         elif file_name[-4:] == 'json':
             data = json.load(open(file_name))
         elif 'pil' in kwargs and kwargs['pil']:
-            data = Image.open(file_name)
+            try:
+                data = Image.open(file_name)
+            except Image.DecompressionBombError:
+                Image.MAX_IMAGE_PIXELS = None
+                data = Image.open(file_name)
         else:
             data = io.imread(file_name)
 
