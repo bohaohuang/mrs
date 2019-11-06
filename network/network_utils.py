@@ -39,7 +39,7 @@ def write_and_print(writer, phase, current_epoch, total_epoch, loss_dict, s_time
     for loss_name, loss_value in loss_dict.items():
         if 'image' in loss_name:
             grid = torchvision.utils.make_grid(loss_value)
-            writer.add_image('image/{}_epoch'.format(phase), grid, current_epoch)
+            writer.add_image('{}/{}_epoch'.format(loss_name, phase), grid, current_epoch)
         else:
             writer.add_scalar('data/{}_{}_epoch'.format(phase, loss_name), loss_value, current_epoch)
             loss_str += '{}: {:.3f} '.format(loss_name, loss_value)
