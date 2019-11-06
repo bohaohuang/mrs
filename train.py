@@ -25,7 +25,7 @@ from data import data_loader
 from mrs_utils import misc_utils
 from network import network_utils, network_io
 
-CONFIG_FILE = 'config.json'
+CONFIG_FILE = 'temp_config.json'
 
 
 def read_config():
@@ -101,11 +101,11 @@ def train_model(args, device, parallel):
     train_loader = DataLoader(data_loader.RSDataLoader(args['dataset']['data_dir'], args['dataset']['train_file'],
                                                        transforms=tsfm_train),
                               batch_size=args['dataset']['batch_size'], shuffle=True,
-                              num_workers=args['dataset']['num_workers'])
+                              num_workers=args['dataset']['num_workers'], pin_memory=True)
     valid_loader = DataLoader(data_loader.RSDataLoader(args['dataset']['data_dir'], args['dataset']['valid_file'],
                                                        transforms=tsfm_valid),
                               batch_size=args['dataset']['batch_size'], shuffle=False,
-                              num_workers=args['dataset']['num_workers'])
+                              num_workers=args['dataset']['num_workers'], pin_memory=True)
     print('Training model on the {} dataset'.format(args['dataset']['ds_name']))
     train_val_loaders = {'train': train_loader, 'valid': valid_loader}
 
