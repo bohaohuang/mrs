@@ -37,7 +37,7 @@ def write_and_print(writer, phase, current_epoch, total_epoch, loss_dict, s_time
     """
     loss_str = '[{}] Epoch: {}/{} '.format(phase, current_epoch, total_epoch)
     for loss_name, loss_value in loss_dict.items():
-        if loss_name == 'image':
+        if 'image' in loss_name:
             grid = torchvision.utils.make_grid(loss_value)
             writer.add_image('image/{}_epoch'.format(phase), grid, current_epoch)
         else:
