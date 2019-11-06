@@ -1,6 +1,6 @@
 # Massachusetts Roads Dataset
 ## Usage
-1. Download [pre-splitted training, validation and test sets]([https://www.cs.toronto.edu/~vmnih/data/](https://www.cs.toronto.edu/~vmnih/data/))
+1. Download [pre-splitted training, validation and test sets](https://www.cs.toronto.edu/~vmnih/data/)
 2. Make sure the directory structure is:
 ```
 mnih
