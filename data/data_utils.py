@@ -8,8 +8,10 @@ import os
 from glob import glob
 
 # Libs
+import h5py
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 from natsort import natsorted
 from torchvision import transforms
 
@@ -202,5 +204,64 @@ def create_toy_set(data_dir, train_file='file_list_train.txt', valid_file='file_
             copyfile(os.path.join(data_dir, 'patches', lbl), os.path.join(patch_dir, lbl))
 
 
+def patches_to_hdf5(data_dir, save_dir, patch_size=None):
+    """
+    Convert a normal dataset into hdf5 format
+    Reading files from hdf5 is faster due to faster decoding and none-scatter file reading
+    :param data_dir: The data directory of a dataset created by preprocess.py
+    :param save_dir: The directory to save the hdf5 dataset files
+    :param patch_size: The size of the patches, every patch should have the same size, if None is given, the size of the
+                       first element in file_list_train.txt will be used
+    :return:
+    """
+    # create folders and files
+    misc_utils.make_dir_if_not_exist(save_dir)
+    hdf5_train = h5py.File(os.path.join(save_dir, 'train.hdf5'), mode='w')
+    hdf5_valid = h5py.File(os.path.join(save_dir, 'valid.hdf5'), mode='w')
+
+    # read train, valid files
+    train_file_list = misc_utils.load_file(os.path.join(data_dir, 'file_list_train.txt'))
+    valid_file_list = misc_utils.load_file(os.path.join(data_dir, 'file_list_valid.txt'))
+
+    if not patch_size:
+        # read first elemet in file_list_train.txt
+        patch_size = misc_utils.load_file(os.path.join(data_dir, 'patches',
+                                                       train_file_list[0].strip().split(' ')[0])).shape[:2]
+    train_img_shape = (len(train_file_list), *patch_size, 3)
+    train_lbl_shape = (len(train_file_list), *patch_size)
+    valid_img_shape = (len(valid_file_list), *patch_size, 3)
+    valid_lbl_shape = (len(valid_file_list), *patch_size)
+
+    # create dataset
+    hdf5_train.create_dataset('img', train_img_shape, np.uint8)
+    hdf5_train.create_dataset('lbl', train_lbl_shape, np.uint8)
+    hdf5_valid.create_dataset('img', valid_img_shape, np.uint8)
+    hdf5_valid.create_dataset('lbl', valid_lbl_shape, np.uint8)
+
+    # write data
+    patch_dir = os.path.join(data_dir, 'patches')
+    for cnt, line in enumerate(tqdm(train_file_list)):
+        img_file, lbl_file = line.strip().split(' ')
+        img, lbl = misc_utils.load_file(os.path.join(patch_dir, img_file)), \
+                   misc_utils.load_file(os.path.join(patch_dir, lbl_file))
+        np.testing.assert_array_equal(img.shape[:2], patch_size)
+        np.testing.assert_array_equal(img.shape[:2], lbl.shape[:2])
+        hdf5_train['img'][cnt, ...] = img
+        hdf5_train['lbl'][cnt, ...] = lbl
+    for cnt, line in enumerate(tqdm(valid_file_list)):
+        img_file, lbl_file = line.strip().split(' ')
+        img, lbl = misc_utils.load_file(os.path.join(patch_dir, img_file)), \
+                   misc_utils.load_file(os.path.join(patch_dir, lbl_file))
+        np.testing.assert_array_equal(img.shape[:2], patch_size)
+        np.testing.assert_array_equal(img.shape[:2], lbl.shape[:2])
+        hdf5_valid['img'][cnt, ...] = img
+        hdf5_valid['lbl'][cnt, ...] = lbl
+
+    hdf5_train.close()
+    hdf5_valid.close()
+
+
 if __name__ == '__main__':
-    create_toy_set(r'/hdd/mrs/inria/ps512_pd0_ol0', move_dir='/hdd/mrs/inria/toyset')
+    # create_toy_set(r'/hdd/mrs/inria/ps512_pd0_ol0', move_dir='/hdd/mrs/inria/toyset')
+    patches_to_hdf5(r'/hdd/mrs/deepglobe/14p_pd0_ol0',
+                    r'/hdd/mrs/deepglobe/14p_pd0_ol0_hdf5')

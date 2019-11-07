@@ -7,6 +7,7 @@ This file defines data loader for some benchmarked remote sensing datasets
 import os
 
 # Libs
+import h5py
 from torch.utils import data
 
 # Own modules
@@ -47,6 +48,54 @@ class RSDataLoader(data.Dataset):
                 rgb = tsfm_image['image']
                 gt = tsfm_image['mask']
         return rgb, gt
+
+
+class HDF5DataLoader(data.Dataset):
+    def __init__(self, parent_path, file_list, transforms=None):
+        """
+        A data reader for the remote sensing dataset in hdf5 format
+        Training with hdf5 data is generally >10% faster
+        Normally the downloaded remote sensing dataset needs to be preprocessed
+        :param parent_path: path to a preprocessed remote sensing dataset
+        :param file_list: a text file where each row contains rgb and gt files separated by space
+        :param transforms: albumentation transforms
+        """
+        self.file_path = os.path.join(parent_path, file_list)
+        self.transforms = transforms
+        self.dataset = None
+        with h5py.File(self.file_path, 'r') as file:
+            self.dataset_len = file['img'].shape[0]
+
+    def __len__(self):
+        return self.dataset_len
+
+    def __getitem__(self, index):
+        if self.dataset is None:
+            self.dataset = h5py.File(self.file_path, 'r')
+        rgb = self.dataset['img'][index, ...]
+        gt = self.dataset['lbl'][index, ...]
+        if self.transforms:
+            for tsfm in self.transforms:
+                tsfm_image = tsfm(image=rgb, mask=gt)
+                rgb = tsfm_image['image']
+                gt = tsfm_image['mask']
+        return rgb, gt
+
+
+def get_loader(data_path, file_name, transforms=None):
+    """
+    Get the appropriate loader with the given file type
+    :param data_path: path to a preprocessed remote sensing dataset
+    :param file_name: name of the data file, could be a text file or hdf5 file
+    :param transforms: albumentation transforms
+    :return: the corresponding loader
+    """
+    if file_name[-3:] == 'txt':
+        return RSDataLoader(data_path, file_name, transforms)
+    elif file_name[-4:] == 'hdf5':
+        return HDF5DataLoader(data_path, file_name, transforms)
+    else:
+        raise NotImplementedError('File extension {} is not supportted yet'.format(os.path.splitext(file_name))[-1])
 
 
 if __name__ == '__main__':
