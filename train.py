@@ -98,14 +98,14 @@ def train_model(args, device, parallel):
     else:
         tsfm_train = A.Compose(tsfms)
         tsfm_valid = A.Compose(tsfms[-2:])
-    train_loader = DataLoader(data_loader.RSDataLoader(args['dataset']['data_dir'], args['dataset']['train_file'],
-                                                       transforms=tsfm_train),
-                              batch_size=args['dataset']['batch_size'], shuffle=True,
-                              num_workers=args['dataset']['num_workers'])
-    valid_loader = DataLoader(data_loader.RSDataLoader(args['dataset']['data_dir'], args['dataset']['valid_file'],
-                                                       transforms=tsfm_valid),
-                              batch_size=args['dataset']['batch_size'], shuffle=False,
-                              num_workers=args['dataset']['num_workers'])
+    train_loader = DataLoader(data_loader.get_loader(
+        args['dataset']['data_dir'], args['dataset']['train_file'], transforms=tsfm_train),
+        batch_size=args['dataset']['batch_size'], shuffle=True, num_workers=args['dataset']['num_workers'],
+        pin_memory=True)
+    valid_loader = DataLoader(data_loader.get_loader(
+        args['dataset']['data_dir'], args['dataset']['valid_file'], transforms=tsfm_valid),
+        batch_size=args['dataset']['batch_size'], shuffle=False, num_workers=args['dataset']['num_workers'],
+        pin_memory=True)
     print('Training model on the {} dataset'.format(args['dataset']['ds_name']))
     train_val_loaders = {'train': train_loader, 'valid': valid_loader}
 

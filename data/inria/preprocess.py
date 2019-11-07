@@ -7,6 +7,7 @@ This file preprocess the raw Inria Data and extract the images into small patche
 import os
 
 # Libs
+import h5py
 import numpy as np
 from tqdm import tqdm
 
