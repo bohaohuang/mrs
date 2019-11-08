@@ -29,7 +29,7 @@ def set_gpu(gpu, enable_benchmark=True):
         os.environ["CUDA_VISIBLE_DEVICES"] = gpu
         parallel = True
         device = torch.device("cuda:{}".format(','.join([str(a) for a in range(len(gpu.split(',')))])))
-        print("Devices being used: cuda:", device)
+        print("Devices being used: cuda:", gpu)
     else:
         parallel = False
         device = torch.device("cuda:{}".format(gpu))
