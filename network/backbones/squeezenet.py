@@ -79,7 +79,8 @@ class SqueezeNet(nn.Module):
         if version == '1_0':
 
             self.layer0 = nn.Sequential(
-                nn.Conv2d(3, 96, kernel_size=7, stride=strides[0], padding=3),
+                nn.Conv2d(3, 96, kernel_size=7,
+                          stride=strides[0], padding=3*2//strides[0], dilation=2//strides[0]),
                 nn.ReLU(inplace=True)
             )
             self.layer1 = self._make_layer(
@@ -92,7 +93,8 @@ class SqueezeNet(nn.Module):
         elif version == '1_1':
 
             self.layer0 = nn.Sequential(
-                nn.Conv2d(3, 64, kernel_size=3, stride=strides[0], padding=1),
+                nn.Conv2d(3, 64, kernel_size=3,
+                          stride=strides[0], padding=1*2//strides[0], dilation=2//strides[0]),
                 nn.ReLU(inplace=True)
             )
             self.layer1 = self._make_layer(
@@ -105,7 +107,8 @@ class SqueezeNet(nn.Module):
             raise ValueError("Unsupported SqueezeNet version {version}:"
                              "1_0 or 1_1 expected".format(version=version))
         
-        final_conv = nn.Conv2d(512, self.n_class, kernel_size=1, stride=strides[4])
+        final_conv = nn.Conv2d(
+            512, self.n_class, kernel_size=1, stride=strides[4], dilation=4**(2-strides[4]))
         self.layer4 = nn.Sequential(
             nn.Dropout(p=0.5),
             final_conv,
