@@ -6,6 +6,7 @@ This file defines commonly used functions for using networks
 import os
 import copy
 import timeit
+from collections import OrderedDict
 
 
 # Libs
@@ -94,15 +95,11 @@ def load_epoch(save_dir, resume_epoch, model, optm):
 
 
 def sequential_load(target, source_state):
-    new_dict = {}
-    odict_list = list(target.items())
-    for k, v in odict_list:
-        if 'num_batches_tracked' in k:
-            # no need to load this
-            odict_list.remove((k, v))
-    odict = {k: v for k, v in odict_list}
-    for (k1, v1), (k2, v2) in zip(odict.items(), source_state.items()):
-        new_dict[k1] = v2
+    base_dict = OrderedDict(
+        [layer for layer in list(target.items())
+         if 'num_batches_tracked' not in layer[0]]
+    )
+    new_dict = OrderedDict(zip(base_dict.keys(), source_state.values()))
     return new_dict
 
 
