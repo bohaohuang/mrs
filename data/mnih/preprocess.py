@@ -58,9 +58,8 @@ def patch_mnih(data_dir, save_dir, patch_size, pad, overlap):
         FILENAMES = [
             fname.split('.')[0] for fname in os.listdir(os.path.join(DATA_DIR, dataset, MODES[0]))
         ]
-        NUM_FILES = len(FILENAMES)    
         # create folders and files
-        patch_dir = save_dir
+        patch_dir = os.path.join(save_dir, 'patches')
         misc_utils.make_dir_if_not_exist(patch_dir)
         record_file = open(os.path.join(save_dir, 'file_list_{}.txt'.format(dataset)), 'w+')
 
