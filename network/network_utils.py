@@ -325,3 +325,4 @@ class Evaluator:
         if report_dir:
             misc_utils.make_dir_if_not_exist(report_dir)
             misc_utils.save_file(os.path.join(report_dir, 'result.txt'), report)
+        return iou_a/iou_b*100
