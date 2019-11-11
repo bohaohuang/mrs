@@ -42,8 +42,8 @@ def patch_inria(data_dir, save_dir, patch_size, pad, overlap):
     # get rgb and gt files
     for city_name in tqdm(SAVE_CITY, desc='City-wise'):
         for tile_id in tqdm(range(1, 37), desc='Tile-wise', leave=False):
-            rgb_filename = os.path.join(data_dir, 'image', '{}{}.tif'.format(city_name, tile_id))
-            gt_filename = os.path.join(data_dir, 'truth', '{}{}.tif'.format(city_name, tile_id))
+            rgb_filename = os.path.join(data_dir, 'images', '{}{}.tif'.format(city_name, tile_id))
+            gt_filename = os.path.join(data_dir, 'gt', '{}{}.tif'.format(city_name, tile_id))
             for rgb_patch, gt_patch, y, x in data_utils.patch_tile(rgb_filename, gt_filename, patch_size, pad, overlap):
                 rgb_patchname = '{}{}_y{}x{}.jpg'.format(city_name, tile_id, int(y), int(x))
                 gt_patchname = '{}{}_y{}x{}.png'.format(city_name, tile_id, int(y), int(x))
@@ -62,8 +62,8 @@ def get_images(data_dir, city_ids=tuple(range(5)), tile_ids=tuple(range(1, 6))):
     gt_files = []
     for city_name in [CITY_NAMES[i] for i in city_ids]:
         for tile_id in tile_ids:
-            rgb_filename = os.path.join(data_dir, 'image', '{}{}.tif'.format(city_name, tile_id))
-            gt_filename = os.path.join(data_dir, 'truth', '{}{}.tif'.format(city_name, tile_id))
+            rgb_filename = os.path.join(data_dir, 'images', '{}{}.tif'.format(city_name, tile_id))
+            gt_filename = os.path.join(data_dir, 'gt', '{}{}.tif'.format(city_name, tile_id))
             if city_name in VAL_CITY and tile_id in VAL_IDS:
                 rgb_files.append(rgb_filename)
                 gt_files.append(gt_filename)
