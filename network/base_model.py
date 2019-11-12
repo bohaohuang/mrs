@@ -83,7 +83,7 @@ class Base(nn.Module):
             # loss
             # crop margin if necessary & reduce channel dimension
             if self.lbl_margin > 0:
-                label = label[:, :, self.lbl_margin:-self.lbl_margin, self.lbl_margin:-self.lbl_margin]
+                label = label[:, self.lbl_margin:-self.lbl_margin, self.lbl_margin:-self.lbl_margin]
             for c_cnt, c in enumerate(criterions):
                 loss = c(pred, label)
                 if phase == 'train' and c_cnt == bp_loss_idx:
@@ -141,7 +141,7 @@ class Base(nn.Module):
 
             # loss
             if self.lbl_margin > 0:
-                label = label[:, :, self.lbl_margin:-self.lbl_margin, self.lbl_margin:-self.lbl_margin]
+                label = label[:, self.lbl_margin:-self.lbl_margin, self.lbl_margin:-self.lbl_margin]
             for c_cnt, c in enumerate(criterions):
                 loss = c(pred, label)
                 if phase == 'train' and c_cnt == bp_loss_idx:
