@@ -266,9 +266,9 @@ class Evaluator:
             assert len(self.rgb_files) == len(self.lbl_files)
             self.truth_val = 255
         elif load_func:
+            self.truth_val = kwargs.pop('truth_val', 1)
             self.rgb_files, self.lbl_files = load_func(data_dir, **kwargs)
             assert len(self.rgb_files) == len(self.lbl_files)
-            self.truth_val = 1
         else:
             raise NotImplementedError('Dataset {} is not supported')
 
