@@ -141,6 +141,21 @@ def get_img_lbl(data_dir, img_ext, lbl_ext):
     return [(img_file, lbl_file) for (img_file, lbl_file) in zip(img_files, lbl_files)]
 
 
+def get_ds_stats(img_files):
+    ds_mean = np.zeros(3)
+    ds_std = np.zeros(3)
+
+    for file in tqdm(img_files):
+        img = misc_utils.load_file(file).astype(np.float32) / 255
+        ds_mean = ds_mean + np.mean(img, axis=(0, 1))
+        ds_std = ds_std + np.std(img, axis=(0, 1))
+
+    ds_mean = ds_mean / len(img_files)
+    ds_std = ds_std / len(img_files)
+
+    return ds_mean, ds_std
+
+
 def patch_tile(rgb_file, gt_file, patch_size, pad, overlap):
     """
     Extract the given rgb and gt tiles into patches
