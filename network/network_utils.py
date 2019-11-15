@@ -4,6 +4,7 @@ This file defines commonly used functions for using networks
 
 # Built-in
 import os
+import re
 import copy
 import timeit
 from collections import OrderedDict
@@ -326,3 +327,23 @@ class Evaluator:
             misc_utils.make_dir_if_not_exist(report_dir)
             misc_utils.save_file(os.path.join(report_dir, 'result.txt'), report)
         return iou_a/iou_b*100
+
+
+def read_results(result_name, regex=None):
+    results = {}
+    result_lines = misc_utils.load_file(result_name)
+    for line in result_lines:
+        if len(line) <= 1:
+            continue
+        name, iou_a, iou_b, iou = line.strip().split(',')
+        results[name] = {'iou_a': float(iou_a), 'iou_b': float(iou_b), 'iou': float(iou)}
+    if regex:
+        pattern = re.compile(regex)
+        iou_a, iou_b = 0, 0
+        for key, val in results.items():
+            if pattern.match(key):
+                iou_a += val['iou_a']
+                iou_b += val['iou_b']
+        return iou_a / iou_b * 100
+    else:
+        return results
