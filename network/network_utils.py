@@ -4,8 +4,10 @@ This file defines commonly used functions for using networks
 
 # Built-in
 import os
+import re
 import copy
 import timeit
+from collections import OrderedDict
 
 
 # Libs
@@ -94,15 +96,11 @@ def load_epoch(save_dir, resume_epoch, model, optm):
 
 
 def sequential_load(target, source_state):
-    new_dict = {}
-    odict_list = list(target.items())
-    for k, v in odict_list:
-        if 'num_batches_tracked' in k:
-            # no need to load this
-            odict_list.remove((k, v))
-    odict = {k: v for k, v in odict_list}
-    for (k1, v1), (k2, v2) in zip(odict.items(), source_state.items()):
-        new_dict[k1] = v2
+    base_dict = OrderedDict(
+        [layer for layer in list(target.items())
+         if 'num_batches_tracked' not in layer[0]]
+    )
+    new_dict = OrderedDict(zip(base_dict.keys(), source_state.values()))
     return new_dict
 
 
@@ -269,9 +267,9 @@ class Evaluator:
             assert len(self.rgb_files) == len(self.lbl_files)
             self.truth_val = 255
         elif load_func:
+            self.truth_val = kwargs.pop('truth_val', 1)
             self.rgb_files, self.lbl_files = load_func(data_dir, **kwargs)
             assert len(self.rgb_files) == len(self.lbl_files)
-            self.truth_val = 1
         else:
             raise NotImplementedError('Dataset {} is not supported')
 
@@ -328,3 +326,24 @@ class Evaluator:
         if report_dir:
             misc_utils.make_dir_if_not_exist(report_dir)
             misc_utils.save_file(os.path.join(report_dir, 'result.txt'), report)
+        return iou_a/iou_b*100
+
+
+def read_results(result_name, regex=None):
+    results = {}
+    result_lines = misc_utils.load_file(result_name)
+    for line in result_lines:
+        if len(line) <= 1:
+            continue
+        name, iou_a, iou_b, iou = line.strip().split(',')
+        results[name] = {'iou_a': float(iou_a), 'iou_b': float(iou_b), 'iou': float(iou)}
+    if regex:
+        pattern = re.compile(regex)
+        iou_a, iou_b = 0, 0
+        for key, val in results.items():
+            if pattern.match(key):
+                iou_a += val['iou_a']
+                iou_b += val['iou_b']
+        return iou_a / iou_b * 100
+    else:
+        return results

@@ -4,8 +4,6 @@ https://github.com/pytorch/vision/blob/master/torchvision/models/squeezenet.py
 """
 
 # Built-in
-import math
-from collections import OrderedDict
 
 # Libs
 
@@ -19,7 +17,7 @@ except ImportError:
     from torch.utils.model_zoo import load_url as load_state_dict_from_url
 
 # Own modules
-# from network import network_utils
+from network import network_utils
 
 
 model_urls = {
@@ -156,11 +154,9 @@ def _squeezenet(version, pretrained, strides, inter_features, progress, **kwargs
     model = SqueezeNet(version, strides, inter_features, **kwargs)
     if pretrained:
         arch = 'squeezenet' + version
-        state_dict = load_state_dict_from_url(model_urls[arch],
-                                              progress=progress)
-        # Loaded pretrained state_dict has different prefixes for state_dict which need to be renamed
-        state_dict = OrderedDict(zip(model.state_dict().keys(), state_dict.values()))
-        model.load_state_dict(state_dict)
+        pretrained_state = network_utils.sequential_load(
+            model.state_dict(), load_state_dict_from_url(model_urls[arch], progress=progress))
+        model.load_state_dict(pretrained_state, strict=False)
     return model
 
 
