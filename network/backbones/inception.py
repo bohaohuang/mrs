@@ -39,7 +39,7 @@ InceptionOutputs.__annotations__ = {
 _InceptionOutputs = InceptionOutputs
 
 
-def inception_v3(pretrained=False, progress=True, **kwargs):
+def inception_v3(pretrained=False, progress=True, inter_features=False, **kwargs):
     r"""Inception v3 model architecture from
     `"Rethinking the Inception Architecture for Computer Vision" <http://arxiv.org/abs/1512.00567>`_.
 
@@ -63,10 +63,12 @@ def inception_v3(pretrained=False, progress=True, **kwargs):
             kwargs['aux_logits'] = True
         else:
             original_aux_logits = True
-        model = Inception3(**kwargs)
-        state_dict = load_state_dict_from_url(model_urls['inception_v3_google'],
-                                              progress=progress)
-        model.load_state_dict(state_dict)
+        model = Inception3(inter_features=inter_features, **kwargs)
+        pretrained_state = network_utils.sequential_load(
+            model.state_dict(),
+            load_state_dict_from_url(model_urls['inception_v3_google'],
+                                     progress=progress))
+        model.load_state_dict(pretrained_state, strict=False)
         if not original_aux_logits:
             model.aux_logits = False
             del model.AuxLogits
@@ -78,43 +80,40 @@ def inception_v3(pretrained=False, progress=True, **kwargs):
 class Inception3(nn.Module):
 
     def __init__(self, num_classes=1000, aux_logits=True, transform_input=False,
-                 inception_blocks=None):
+                 inception_blocks=None, inter_features=False):
         super(Inception3, self).__init__()
-        if inception_blocks is None:
-            inception_blocks = [
-                BasicConv2d, InceptionA, InceptionB, InceptionC,
-                InceptionD, InceptionE, InceptionAux
-            ]
-        assert len(inception_blocks) == 7
-        conv_block = inception_blocks[0]
-        inception_a = inception_blocks[1]
-        inception_b = inception_blocks[2]
-        inception_c = inception_blocks[3]
-        inception_d = inception_blocks[4]
-        inception_e = inception_blocks[5]
-        inception_aux = inception_blocks[6]
-
         self.aux_logits = aux_logits
         self.transform_input = transform_input
-        self.Conv2d_1a_3x3 = conv_block(3, 32, kernel_size=3, stride=2)
-        self.Conv2d_2a_3x3 = conv_block(32, 32, kernel_size=3)
-        self.Conv2d_2b_3x3 = conv_block(32, 64, kernel_size=3, padding=1)
-        self.Conv2d_3b_1x1 = conv_block(64, 80, kernel_size=1)
-        self.Conv2d_4a_3x3 = conv_block(80, 192, kernel_size=3)
-        self.Mixed_5b = inception_a(192, pool_features=32)
-        self.Mixed_5c = inception_a(256, pool_features=64)
-        self.Mixed_5d = inception_a(288, pool_features=64)
-        self.Mixed_6a = inception_b(288)
-        self.Mixed_6b = inception_c(768, channels_7x7=128)
-        self.Mixed_6c = inception_c(768, channels_7x7=160)
-        self.Mixed_6d = inception_c(768, channels_7x7=160)
-        self.Mixed_6e = inception_c(768, channels_7x7=192)
-        if aux_logits:
-            self.AuxLogits = inception_aux(768, num_classes)
-        self.Mixed_7a = inception_d(768)
-        self.Mixed_7b = inception_e(1280)
-        self.Mixed_7c = inception_e(2048)
-        self.fc = nn.Linear(2048, num_classes)
+        self.inter_features = inter_features
+        self.layer0 = nn.Sequential(
+            BasicConv2d(3, 32, kernel_size=3, stride=2, padding=1),
+            BasicConv2d(32, 32, kernel_size=3),
+            BasicConv2d(32, 64, kernel_size=3, padding=1)
+        )
+        self.layer1 = nn.Sequential(
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            BasicConv2d(64, 80, kernel_size=1),
+            BasicConv2d(80, 192, kernel_size=3)
+        )
+        self.layer2 = nn.Sequential(
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            InceptionA(192, pool_features=32),
+            InceptionA(256, pool_features=64),
+            InceptionA(288, pool_features=64),
+            InceptionB(288)
+        )
+        self.layer3 = nn.Sequential(
+            InceptionC(768, channels_7x7=128),
+            InceptionC(768, channels_7x7=160),
+            InceptionC(768, channels_7x7=160),
+            InceptionC(768, channels_7x7=192)
+        )
+        self.inception_aux = InceptionAux(768, num_classes)
+        self.layer4 = nn.Sequential(
+            InceptionD(768),
+            InceptionE(1280),
+            InceptionE(2048)
+        )
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
@@ -142,61 +141,32 @@ class Inception3(nn.Module):
         return x
 
     def _forward(self, x):
-        # N x 3 x 299 x 299
-        x = self.Conv2d_1a_3x3(x)
-        # N x 32 x 149 x 149
-        x = self.Conv2d_2a_3x3(x)
-        # N x 32 x 147 x 147
-        x = self.Conv2d_2b_3x3(x)
-        # N x 64 x 147 x 147
-        x = F.max_pool2d(x, kernel_size=3, stride=2)
-        # N x 64 x 73 x 73
-        x = self.Conv2d_3b_1x1(x)
-        # N x 80 x 73 x 73
-        x = self.Conv2d_4a_3x3(x)
-        # N x 192 x 71 x 71
-        x = F.max_pool2d(x, kernel_size=3, stride=2)
-        # N x 192 x 35 x 35
-        x = self.Mixed_5b(x)
-        # N x 256 x 35 x 35
-        x = self.Mixed_5c(x)
-        # N x 288 x 35 x 35
-        x = self.Mixed_5d(x)
-        # N x 288 x 35 x 35
-        x = self.Mixed_6a(x)
-        # N x 768 x 17 x 17
-        x = self.Mixed_6b(x)
-        # N x 768 x 17 x 17
-        x = self.Mixed_6c(x)
-        # N x 768 x 17 x 17
-        x = self.Mixed_6d(x)
-        # N x 768 x 17 x 17
-        x = self.Mixed_6e(x)
-        # N x 768 x 17 x 17
-        aux_defined = self.training and self.aux_logits
-        if aux_defined:
-            aux = self.AuxLogits(x)
+        if self.inter_features:
+            layer0 = self.layer0(x)
+            layer1 = self.layer1(layer0)
+            layer2 = self.layer2(layer1)
+            layer3 = self.layer3(layer2)
+            aux_defined = self.training and self.aux_logits
+            if aux_defined:
+                aux = self.inception_aux(layer3)
+            else:
+                aux = None
+            layer4 = self.layer4(layer3)
+            return (layer0, layer1, layer2, layer3, layer4), aux
         else:
-            aux = None
-        # N x 768 x 17 x 17
-        x = self.Mixed_7a(x)
-        # N x 1280 x 8 x 8
-        x = self.Mixed_7b(x)
-        # N x 2048 x 8 x 8
-        x = self.Mixed_7c(x)
-        # N x 2048 x 8 x 8
-        # Adaptive average pooling
-        x = F.adaptive_avg_pool2d(x, (1, 1))
-        # N x 2048 x 1 x 1
-        x = F.dropout(x, training=self.training)
-        # N x 2048 x 1 x 1
-        x = torch.flatten(x, 1)
-        # N x 2048
-        x = self.fc(x)
-        # N x 1000 (num_classes)
-        return x, aux
+            x = self.layer0(x)
+            x = self.layer1(x)
+            x = self.layer2(x)
+            x = self.layer3(x)
+            aux_defined = self.training and self.aux_logits
+            if aux_defined:
+                aux = self.inception_aux(x)
+            else:
+                aux = None
+            x = self.layer4(x)
+            return x, aux
 
-    @torch.jit.unused
+    @torch.jit.unused # Not available in torch versions lower than 1.30
     def eager_outputs(self, x, aux):
         # type: (Tensor, Optional[Tensor]) -> InceptionOutputs
         if self.training and self.aux_logits:
@@ -463,3 +433,9 @@ class BasicConv2d(nn.Module):
         x = self.conv(x)
         x = self.bn(x)
         return F.relu(x, inplace=True)
+
+
+if __name__ == '__main__':
+    model = inception_v3(pretrained=True, progress=True)
+    from torchsummary import summary
+    summary(model, (3, 512, 512), device='cpu')
