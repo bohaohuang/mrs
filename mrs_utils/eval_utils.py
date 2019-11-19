@@ -71,10 +71,10 @@ def coord_iou(coords_a, coords_b):
     y2, x2 = np.max(coords_b, axis=0)
     bb2 = {'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2}
 
-    assert bb1['x1'] < bb1['x2']
-    assert bb1['y1'] < bb1['y2']
-    assert bb2['x1'] < bb2['x2']
-    assert bb2['y1'] < bb2['y2']
+    assert bb1['x1'] <= bb1['x2']
+    assert bb1['y1'] <= bb1['y2']
+    assert bb2['x1'] <= bb2['x2']
+    assert bb2['y1'] <= bb2['y2']
 
     x_left = max(bb1['x1'], bb2['x1'])
     y_top = max(bb1['y1'], bb2['y1'])
@@ -153,6 +153,7 @@ class ObjectScorer(object):
         :return:
         """
         groups = []
+        obj_ids = list(range(len(reg_props)))
         for cp in cps:
             flag = True
             for group in groups:
@@ -162,6 +163,11 @@ class ObjectScorer(object):
                     break
             if flag:
                 groups.append(set(cp))
+                for c in cp:
+                    obj_ids.remove(c)
+        for obj_id in obj_ids:
+            groups.append({obj_id})
+
         reg_groups = []
         for group in groups:
             reg_groups.append([reg_props[g] for g in group])
@@ -243,4 +249,16 @@ def get_precision_recall(conf, true):
 
 
 if __name__ == '__main__':
-    pass
+    rgb_file = r'/media/ei-edl01/data/remote_sensing_data/inria/images/austin1.tif'
+    lbl_file = r'/media/ei-edl01/data/remote_sensing_data/inria/gt/austin1.tif'
+    conf_file = r'/hdd/Results/mrs/inria/ecresnet50_dcunet_dsinria_lre1e-04_lrd1e-04_ep50_bs7_ds50_dr0p1/austin1.npy'
+    rgb = misc_utils.load_file(rgb_file)
+    lbl_img, conf_img = misc_utils.load_file(lbl_file) / 255, misc_utils.load_file(conf_file)
+
+    osc = ObjectScorer(min_region=5, min_th=0.5, link_r=10, eps=2)
+    lbl_groups = osc.get_object_groups(lbl_img)
+    conf_groups = osc.get_object_groups(conf_img)
+    print(len(lbl_groups), len(conf_groups))
+    lbl_group_img = display_group(lbl_groups, lbl_img.shape[:2], need_return=True)
+    conf_group_img = display_group(conf_groups, conf_img.shape[:2], need_return=True)
+    vis_utils.compare_figures([rgb, lbl_group_img, conf_group_img], (1, 3), fig_size=(15, 5))
