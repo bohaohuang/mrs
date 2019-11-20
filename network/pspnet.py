@@ -90,6 +90,8 @@ class PSPNet(base_model.Base):
         self.encoder_name = misc_utils.stem_string(encoder_name)
         if 'squeeze' in self.encoder_name:
             strides =(1, 2, 2, 2, 1)
+        elif 'inception' in self.encoder_name:
+            strides =(1, 2, 2, 2, 2)
         else:
             strides = (2, 2, 2, 1, 1)
         self.encoder = encoders.models(self.encoder_name, pretrained, strides, False)
