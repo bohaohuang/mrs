@@ -76,15 +76,16 @@ class InceptionB(nn.Module):
     def __init__(self, in_channels, stride=2, conv_block=None):
         super(InceptionB, self).__init__()
         self.stride = stride
+        self.dilation = 4**(2-stride)
         if conv_block is None:
             conv_block = BasicConv2d
         self.branch3x3 = conv_block(
-            in_channels, 384, kernel_size=3, stride=stride, padding=1)
+            in_channels, 384, kernel_size=3, stride=stride, padding=self.dilation, dilation=self.dilation)
 
         self.branch3x3dbl_1 = conv_block(in_channels, 64, kernel_size=1)
         self.branch3x3dbl_2 = conv_block(64, 96, kernel_size=3, padding=1)
         self.branch3x3dbl_3 = conv_block(
-            96, 96, kernel_size=3, stride=stride, padding=1)
+            96, 96, kernel_size=3, stride=stride, padding=self.dilation, dilation=self.dilation)
 
     def _forward(self, x):
         branch3x3 = self.branch3x3(x)
@@ -93,7 +94,9 @@ class InceptionB(nn.Module):
         branch3x3dbl = self.branch3x3dbl_2(branch3x3dbl)
         branch3x3dbl = self.branch3x3dbl_3(branch3x3dbl)
 
-        branch_pool = F.max_pool2d(x, kernel_size=3, stride=self.stride, padding=1)
+        branch_pool = F.pad(x, (self.dilation,)*4)
+        branch_pool = F.max_pool2d(
+            branch_pool, kernel_size=3, stride=self.stride, dilation=self.dilation)
 
         outputs = [branch3x3, branch3x3dbl, branch_pool]
         return outputs
@@ -159,11 +162,12 @@ class InceptionD(nn.Module):
     def __init__(self, in_channels, stride=2, conv_block=None):
         super(InceptionD, self).__init__()
         self.stride = stride
+        self.dilation = 2//stride
         if conv_block is None:
             conv_block = BasicConv2d
         self.branch3x3_1 = conv_block(in_channels, 192, kernel_size=1)
         self.branch3x3_2 = conv_block(
-            192, 320, kernel_size=3, stride=stride, padding=1)
+            192, 320, kernel_size=3, stride=stride, padding=self.dilation, dilation=self.dilation)
 
         self.branch7x7x3_1 = conv_block(in_channels, 192, kernel_size=1)
         self.branch7x7x3_2 = conv_block(
@@ -171,7 +175,7 @@ class InceptionD(nn.Module):
         self.branch7x7x3_3 = conv_block(
             192, 192, kernel_size=(7, 1), padding=(3, 0))
         self.branch7x7x3_4 = conv_block(
-            192, 192, kernel_size=3, stride=stride, padding=1)
+            192, 192, kernel_size=3, stride=stride, padding=self.dilation, dilation=self.dilation)
 
     def _forward(self, x):
         branch3x3 = self.branch3x3_1(x)
@@ -182,7 +186,9 @@ class InceptionD(nn.Module):
         branch7x7x3 = self.branch7x7x3_3(branch7x7x3)
         branch7x7x3 = self.branch7x7x3_4(branch7x7x3)
 
-        branch_pool = F.max_pool2d(x, kernel_size=3, stride=self.stride, padding=1)
+        branch_pool = F.pad(x, (self.dilation,)*4)
+        branch_pool = F.max_pool2d(
+            branch_pool, kernel_size=3, stride=self.stride, dilation=self.dilation)
         outputs = [branch3x3, branch7x7x3, branch_pool]
         return outputs
 
@@ -265,8 +271,8 @@ class Inception3(nn.Module):
         self.inter_features = inter_features
         self.layer0 = nn.Sequential(
             BasicConv2d(3, 32, kernel_size=3,
-                        stride=strides[0], padding=1*2//strides[0], dilation=2//strides[0]),
-            BasicConv2d(32, 32, kernel_size=3, padding=1),
+                        stride=strides[0], padding=1),
+            BasicConv2d(32, 32, kernel_size=3, padding=1,),
             BasicConv2d(32, 64, kernel_size=3, padding=1)
         )
         self.layer1 = nn.Sequential(
@@ -330,7 +336,7 @@ class Inception3(nn.Module):
             return x
 
 
-def inception_v3(pretrained=False, progress=True, inter_features=False, **kwargs):
+def inception_v3(pretrained=False, strides=(2, 2, 2, 2, 2), inter_features=False, progress=True, ** kwargs):
     r"""Inception v3 model architecture from
     `"Rethinking the Inception Architecture for Computer Vision" <http://arxiv.org/abs/1512.00567>`_.
 
@@ -343,7 +349,7 @@ def inception_v3(pretrained=False, progress=True, inter_features=False, **kwargs
     if pretrained:
         if 'transform_input' not in kwargs:
             kwargs['transform_input'] = True
-        model = Inception3(inter_features=inter_features, **kwargs)
+        model = Inception3(strides=strides, inter_features=inter_features, **kwargs)
         pretrained_state = load_state_dict_from_url(model_urls['inception_v3_google'], progress=progress)
         pretrained_state = OrderedDict(
             [layer for layer in list(
@@ -358,7 +364,6 @@ def inception_v3(pretrained=False, progress=True, inter_features=False, **kwargs
 
 
 if __name__ == '__main__':
-    model = inception_v3(pretrained=True, progress=True,
-                         strides=(2, 2, 2, 2, 2), inter_features=False)
+    model = inception_v3(pretrained=True, strides=(2, 2, 2, 1, 1), inter_features=False, progress=True)
     from torchsummary import summary
     summary(model, (3, 512, 512), device='cpu')
