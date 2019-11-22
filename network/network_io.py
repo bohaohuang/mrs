@@ -28,13 +28,17 @@ def create_model(args):
             model = unet.UNet(sfn=args['sfn'], n_class=args['dataset']['class_num'],
                               encoder_name=args['encoder_name'])
         else:
-            model = unet.UNet(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'])
+            model = unet.UNet(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'],
+                              pretrained=eval(args['imagenet']))
     elif args['decoder_name'] in ['psp', 'pspnet']:
-        model = pspnet.PSPNet(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'])
+        model = pspnet.PSPNet(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'],
+                              pretrained=eval(args['imagenet']))
     elif args['decoder_name'] == 'dlinknet':
-        model = dlinknet.DLinkNet(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'])
+        model = dlinknet.DLinkNet(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'],
+                                  pretrained=eval(args['imagenet']))
     elif args['decoder_name'] == 'deeplabv3':
-        model = deeplabv3.DeepLabV3(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'])
+        model = deeplabv3.DeepLabV3(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'],
+                                    pretrained=eval(args['imagenet']))
     else:
         raise NotImplementedError('Decoder structure {} is not supported'.format(args['decoder_name']))
     return model

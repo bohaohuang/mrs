@@ -38,6 +38,9 @@ def read_config():
     flags['save_dir'] = os.path.join(flags['trainer']['save_root'], network_utils.unique_model_name(flags))
     flags['config'] = config_file
 
+    if 'imagenet' not in flags:
+        flags['imagenet'] = 'True'
+
     return flags
 
 
