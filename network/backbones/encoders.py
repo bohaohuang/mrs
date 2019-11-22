@@ -8,7 +8,7 @@
 # Libs
 
 # Own modules
-from network.backbones import vggnet, resnet, squeezenet
+from network.backbones import vggnet, resnet, squeezenet, inception
 
 
 def models(model_name, pretrained, strides, inter_features):
@@ -18,6 +18,8 @@ def models(model_name, pretrained, strides, inter_features):
         return getattr(resnet, model_name)(pretrained, strides, inter_features)
     elif 'squeezenet' in model_name:
         return getattr(squeezenet, model_name)(pretrained, strides, inter_features)
+    elif 'inception' in model_name:
+        return getattr(inception, model_name)(pretrained, strides, inter_features)
     else:
         raise NotImplementedError(
             'Encoder architecture {} is not supported'.format(model_name))

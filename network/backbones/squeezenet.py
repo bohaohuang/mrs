@@ -78,7 +78,7 @@ class SqueezeNet(nn.Module):
 
             self.layer0 = nn.Sequential(
                 nn.Conv2d(3, 96, kernel_size=7,
-                          stride=strides[0], padding=3*2//strides[0], dilation=2//strides[0]),
+                          stride=strides[0], padding=3),
                 nn.ReLU(inplace=True)
             )
             self.layer1 = self._make_layer(
@@ -92,7 +92,7 @@ class SqueezeNet(nn.Module):
 
             self.layer0 = nn.Sequential(
                 nn.Conv2d(3, 64, kernel_size=3,
-                          stride=strides[0], padding=1*2//strides[0], dilation=2//strides[0]),
+                          stride=strides[0], padding=1),
                 nn.ReLU(inplace=True)
             )
             self.layer1 = self._make_layer(
@@ -125,7 +125,11 @@ class SqueezeNet(nn.Module):
 
     def _make_layer(self, fire_cfg, kernel_size=3, stride=2, ceil_mode=True):
         layers = []
-        layers.append(nn.MaxPool2d(kernel_size=kernel_size, stride=stride, ceil_mode=ceil_mode))
+        dilation = 2 // stride
+        if stride == 1:
+            layers.append(nn.ZeroPad2d(dilation))
+        layers.append(nn.MaxPool2d(kernel_size=kernel_size,
+                                   stride=stride, dilation=dilation, ceil_mode=ceil_mode))
         for cfg in fire_cfg:
             layers.append(Fire(*cfg))
 
@@ -184,7 +188,7 @@ def squeezenet1_1(pretrained=False, strides=(2, 2, 2, 2, 2), inter_features=True
 
 
 if __name__ == '__main__':
-    model = squeezenet1_1(False, (2, 2, 2, 2, 2), True)
+    model = squeezenet1_0(False, (2, 2, 2, 1, 1), True)
     from torchsummary import summary
     summary(model, (3, 512, 512), device='cpu')
     
