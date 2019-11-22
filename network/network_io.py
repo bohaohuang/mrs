@@ -23,6 +23,11 @@ def create_model(args):
     """
     args['encoder_name'] = misc_utils.stem_string(args['encoder_name'])
     args['decoder_name'] = misc_utils.stem_string(args['decoder_name'])
+
+    # TODO this is for compatible issue only, we might want to get rid of this later
+    if 'imagenet' not in args:
+        args['imagenet'] = 'True'
+
     if args['decoder_name'] == 'unet':
         if args['encoder_name'] == 'base':
             model = unet.UNet(sfn=args['sfn'], n_class=args['dataset']['class_num'],
