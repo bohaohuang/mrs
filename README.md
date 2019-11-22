@@ -33,8 +33,8 @@
     - [X] [VGG](./network/backbones/vggnet.py)
     - [X] [ResNet](./network/backbones/resnet.py)
     - [ ] DenseNet
-    - [ ] SqueezeNet
-    - [ ] InceptionNet
+    - [x] [SqueezeNet](./network/backbones/squeezenet.py)
+    - [x] [InceptionNet](./network/backbones/inception.py)
 - [ ] Decoder Structures:
     - [X] [UNet](./network/unet.py)
     - [X] [DLinkNet](./network/dlinknet.py)
