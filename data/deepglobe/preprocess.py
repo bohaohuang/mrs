@@ -20,6 +20,8 @@ from mrs_utils import misc_utils
 
 # Settings
 CITY_DICT = {'Vegas': '2_Vegas', 'Paris': '3_Paris', 'Shanghai': '4_Shanghai', 'Khartoum': '5_Khartoum'}
+MEAN = (0.34391829, 0.41294382, 0.45617783)
+STD = (0.10493991, 0.09446405, 0.08782307)
 
 
 def get_image_gt(data_dir, city_names, target='buildings', valid_percent=0.4):
@@ -131,6 +133,14 @@ def make_dataset(ds_train, ds_valid, save_dir, th=0.5):
         files_remove = glob(os.path.join(patch_dir, '*.aux.xml'))
         for f in files_remove:
             os.remove(f)
+
+
+def get_stats(img_dir):
+    from data import data_utils
+    rgb_imgs = natsorted(glob(os.path.join(img_dir, '*.jpg')))
+    ds_mean, ds_std = data_utils.get_ds_stats(rgb_imgs)
+    print('Mean: {}'.format(ds_mean))
+    print('Std: {}'.format(ds_std))
 
 
 def get_images(data_dir):

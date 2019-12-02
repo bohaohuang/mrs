@@ -142,6 +142,11 @@ def get_img_lbl(data_dir, img_ext, lbl_ext):
 
 
 def get_ds_stats(img_files):
+    """
+    Get the dataset mean and standard deviation, this would be used for augmentation in data reader
+    :param img_files: list of image files to compute the mean and standard deviation
+    :return:
+    """
     ds_mean = np.zeros(3)
     ds_std = np.zeros(3)
 
