@@ -103,7 +103,8 @@ def train_model(args, device, parallel):
         tsfm_valid = A.Compose(tsfms[-2:])
     train_loader = DataLoader(data_loader.get_loader(
         args['dataset']['data_dir'], args['dataset']['train_file'], transforms=tsfm_train),
-        batch_size=args['dataset']['batch_size'], shuffle=True, num_workers=args['dataset']['num_workers'])
+        batch_size=args['dataset']['batch_size'], shuffle=True, num_workers=args['dataset']['num_workers'],
+        drop_last=True)
     valid_loader = DataLoader(data_loader.get_loader(
         args['dataset']['data_dir'], args['dataset']['valid_file'], transforms=tsfm_valid),
         batch_size=args['dataset']['batch_size'], shuffle=False, num_workers=args['dataset']['num_workers'])
