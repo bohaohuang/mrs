@@ -11,7 +11,7 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
 # Own modules
-from mrs_utils import misc_utils
+from mrs_utils import misc_utils, eval_utils
 from network import network_io, network_utils
 
 
@@ -45,7 +45,7 @@ def main():
         ToTensorV2(),
     ])
     save_dir = os.path.join(r'/home/wh145/results/mrs/mass_roads', os.path.basename(network_utils.unique_model_name(args)))
-    evaluator = network_utils.Evaluator('mnih', DATA_DIR, tsfm_valid, device)
+    evaluator = eval_utils.Evaluator('mnih', DATA_DIR, tsfm_valid, device)
     evaluator.evaluate(model, PATCHS_SIZE, 2*model.lbl_margin,
                        pred_dir=save_dir, report_dir=save_dir)
 

@@ -4,6 +4,8 @@
 
 
 # Built-in
+import os
+import re
 
 # Libs
 import numpy as np
@@ -12,7 +14,12 @@ from skimage import measure
 from scipy.spatial import KDTree
 from sklearn.metrics import precision_recall_curve, average_precision_score
 
+# PyTorch
+import torch
+import torch.nn.functional as F
+
 # Own modules
+from data import patch_extractor, data_utils
 from mrs_utils import vis_utils, metric_utils, misc_utils
 
 
@@ -242,10 +249,128 @@ def batch_score(pred_files, lbl_files, min_region=5, min_th=0.5, link_r=20, eps=
     return conf, true
 
 
+def read_results(result_name, regex=None, sum_results=False, delta=1e-6):
+    """
+    Read and parse evaluated results text file
+    :param result_name: path to the results file
+    :param regex: if given, it will be applied to select lines that match the name
+    :param sum_results: if True, return the IoU of the overall dataset
+    :param delta: a small value to prevent divided by zero
+    :return:
+    """
+    results = {}
+    result_lines = misc_utils.load_file(result_name)
+    for line in result_lines:
+        if len(line) <= 1:
+            continue
+        name, iou_a, iou_b, iou = line.strip().split(',')
+        results[name] = {'iou_a': float(iou_a), 'iou_b': float(iou_b), 'iou': float(iou)}
+    if regex:
+        pattern = re.compile(regex)
+        iou_a, iou_b = 0, 0
+        for key, val in results.items():
+            if pattern.match(key):
+                iou_a += val['iou_a']
+                iou_b += val['iou_b']
+        return iou_a / (iou_b + delta) * 100
+    elif sum_results:
+        return results['Overall']['iou']
+    else:
+        return results
+
+
 def get_precision_recall(conf, true):
     ap = average_precision_score(true, conf)
     p, r, th = precision_recall_curve(true, conf)
     return ap, p, r, th
+
+
+class Evaluator:
+    def __init__(self, ds_name, data_dir, tsfm, device, load_func=None, **kwargs):
+        ds_name = misc_utils.stem_string(ds_name)
+        self.tsfm = tsfm
+        self.device = device
+        if ds_name == 'inria':
+            from data.inria import preprocess
+            self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
+            assert len(self.rgb_files) == len(self.lbl_files)
+            self.truth_val = 255
+        elif ds_name == 'deepglobe':
+            from data.deepglobe import preprocess
+            self.rgb_files, self.lbl_files = preprocess.get_images(data_dir)
+            assert len(self.rgb_files) == len(self.lbl_files)
+            self.truth_val = 1
+        elif ds_name == 'deepgloberoad':
+            from data.deepgloberoad import preprocess
+            self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
+            assert len(self.rgb_files) == len(self.lbl_files)
+            self.truth_val = 255
+        elif ds_name == 'mnih':
+            from data.mnih import preprocess
+            self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
+            assert len(self.rgb_files) == len(self.lbl_files)
+            self.truth_val = 255
+        elif load_func:
+            self.truth_val = kwargs.pop('truth_val', 1)
+            self.rgb_files, self.lbl_files = load_func(data_dir, **kwargs)
+            assert len(self.rgb_files) == len(self.lbl_files)
+        else:
+            raise NotImplementedError('Dataset {} is not supported')
+
+    def evaluate(self, model, patch_size, overlap, pred_dir=None, report_dir=None, save_conf=False, delta=1e-6):
+        iou_a, iou_b = 0, 0
+        report = []
+        if pred_dir:
+            misc_utils.make_dir_if_not_exist(pred_dir)
+        for rgb_file, lbl_file in zip(self.rgb_files, self.lbl_files):
+            file_name = os.path.splitext(os.path.basename(lbl_file))[0]
+
+            # read data
+            rgb = misc_utils.load_file(rgb_file)[:, :, :3]
+            lbl = misc_utils.load_file(lbl_file)
+            # if label has multiple channels, only keep the first channel, this is not elegant but it is useful to deal
+            # with deepglobe road
+            # TODO make this an option when selecting dataset
+            if len(lbl.shape) == 3:
+                lbl = lbl[:, :, 0]
+
+            # evaluate on tiles
+            tile_dim = rgb.shape[:2]
+            tile_dim_pad = [tile_dim[0]+2*model.lbl_margin, tile_dim[1]+2*model.lbl_margin]
+            grid_list = patch_extractor.make_grid(tile_dim_pad, patch_size, overlap)
+            tile_preds = []
+            for patch in patch_extractor.patch_block(rgb, model.lbl_margin, grid_list, patch_size, False):
+                for tsfm in self.tsfm:
+                    tsfm_image = tsfm(image=patch)
+                    patch = tsfm_image['image']
+                patch = torch.unsqueeze(patch, 0).to(self.device)
+                pred = F.softmax(model.forward(patch), 1).detach().cpu().numpy()
+                tile_preds.append(data_utils.change_channel_order(pred, True)[0, :, :, :])
+            # stitch back to tiles
+            tile_preds = patch_extractor.unpatch_block(
+                np.array(tile_preds),
+                tile_dim_pad,
+                patch_size,
+                tile_dim,
+                [patch_size[0]-2*model.lbl_margin, patch_size[1]-2*model.lbl_margin],
+                overlap=2*model.lbl_margin
+            )
+            if save_conf:
+                misc_utils.save_file(os.path.join(pred_dir, '{}.npy'.format(file_name)), tile_preds[:, :, 1])
+            tile_preds = np.argmax(tile_preds, -1)
+            a, b = metric_utils.iou_metric(lbl/self.truth_val, tile_preds)
+            print('{}: IoU={:.2f}'.format(file_name, a/(b+delta)*100))
+            report.append('{},{},{},{}\n'.format(file_name, a, b, a/(b+delta)*100))
+            iou_a += a
+            iou_b += b
+            if pred_dir:
+                misc_utils.save_file(os.path.join(pred_dir, '{}.png'.format(file_name)), tile_preds*self.truth_val)
+        print('Overall: IoU={:.2f}'.format(iou_a/iou_b*100))
+        report.append('Overall,{},{},{}\n'.format(iou_a, iou_b, iou_a/iou_b*100))
+        if report_dir:
+            misc_utils.make_dir_if_not_exist(report_dir)
+            misc_utils.save_file(os.path.join(report_dir, 'result.txt'), report)
+        return iou_a/iou_b*100
 
 
 if __name__ == '__main__':
