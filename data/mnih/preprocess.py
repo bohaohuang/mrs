@@ -15,7 +15,7 @@ from data import data_utils
 from mrs_utils import misc_utils
 
 # Settings
-DATA_DIR = r'/media/ei-edl01/data/remote_sensing_data/mnih' # '/data/users/wh145/mnih/'
+DATA_DIR = '/data/users/wh145/mnih/'
 SPLITS = ['train', 'valid'] # test set will be grabbed by get_images() and processed during testing
 MODES = os.listdir(os.path.join(DATA_DIR, SPLITS[0])) # sat (input), map (target)
 MEAN = (0.4251811, 0.42812928, 0.39143909)
@@ -104,7 +104,7 @@ def get_stats(img_dir):
 
 
 if __name__ == '__main__':
-    '''ps = 512
+    ps = 512
     pd = 0
     ol = 0
     save_dir = r'/data/users/wh145/processed_mnih/'
@@ -112,6 +112,4 @@ if __name__ == '__main__':
     patch_mnih(data_dir=DATA_DIR,
                save_dir=save_dir,
                patch_size=(ps, ps),
-               pad=pd, overlap=ol)'''
-
-    get_stats(r'/media/ei-edl01/data/remote_sensing_data/mnih')
+               pad=pd, overlap=ol)
