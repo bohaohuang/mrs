@@ -22,6 +22,8 @@ CITY_IDS = [0, 1, 2, 3, 4]
 SAVE_CITY = [CITY_NAMES[a] for a in CITY_IDS]
 VAL_CITY = ['austin', 'chicago', 'kitsap', 'tyrol-w', 'vienna']
 VAL_IDS = list(range(1, 6))
+MEAN = (0.41776216, 0.43993309, 0.39138562)
+STD = (0.18476704, 0.16793099, 0.15915148)
 
 
 def patch_inria(data_dir, save_dir, patch_size, pad, overlap):
@@ -55,6 +57,15 @@ def patch_inria(data_dir, save_dir, patch_size, pad, overlap):
                     record_file_train.write('{} {}\n'.format(rgb_patchname, gt_patchname))
     record_file_train.close()
     record_file_valid.close()
+
+
+def get_stats(img_dir):
+    from data import data_utils
+    from glob import glob
+    rgb_imgs = glob(os.path.join(img_dir, '*.tif'))
+    ds_mean, ds_std = data_utils.get_ds_stats(rgb_imgs)
+    print('Mean: {}'.format(ds_mean))
+    print('Std: {}'.format(ds_std))
 
 
 def get_images(data_dir, city_ids=tuple(range(5)), tile_ids=tuple(range(1, 6))):

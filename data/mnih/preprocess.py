@@ -5,7 +5,6 @@ This file preprocess the raw MNIH Massachusetts Roads Dataset and extract the im
 
 # Built-in
 import os
-import csv
 
 # Libs
 import numpy as np
@@ -19,6 +18,8 @@ from mrs_utils import misc_utils
 DATA_DIR = '/data/users/wh145/mnih/'
 SPLITS = ['train', 'valid'] # test set will be grabbed by get_images() and processed during testing
 MODES = os.listdir(os.path.join(DATA_DIR, SPLITS[0])) # sat (input), map (target)
+MEAN = (0.4251811, 0.42812928, 0.39143909)
+STD = (0.22423858, 0.21664895, 0.22102307)
 
 def patch_tile(rgb_file, gt_file, patch_size, pad, overlap):
     """
@@ -90,6 +91,18 @@ def get_images(data_dir=DATA_DIR, dataset='test'):
         rgb_files.append(os.path.join(data_dir, dataset, 'sat' ,fname.replace('tif', 'tiff')))
     return rgb_files, gt_files
 
+
+def get_stats(img_dir):
+    from data import data_utils
+    from glob import glob
+    rgb_imgs = []
+    for set_name in ['train', 'valid', 'test']:
+        rgb_imgs.extend(glob(os.path.join(img_dir, set_name, 'sat', '*.tiff')))
+    ds_mean, ds_std = data_utils.get_ds_stats(rgb_imgs)
+    print('Mean: {}'.format(ds_mean))
+    print('Std: {}'.format(ds_std))
+
+
 if __name__ == '__main__':
     ps = 512
     pd = 0
@@ -97,6 +110,6 @@ if __name__ == '__main__':
     save_dir = r'/data/users/wh145/processed_mnih/'
     misc_utils.make_dir_if_not_exist(save_dir)
     patch_mnih(data_dir=DATA_DIR,
-                save_dir=save_dir,
-                patch_size=(ps, ps),
-                pad=pd, overlap=ol)
+               save_dir=save_dir,
+               patch_size=(ps, ps),
+               pad=pd, overlap=ol)

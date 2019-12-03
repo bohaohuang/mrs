@@ -16,6 +16,10 @@ from tqdm import tqdm
 from data import data_utils
 from mrs_utils import misc_utils
 
+# Settings
+MEAN = (0.40994515, 0.38314009, 0.28864455)
+STD = (0.12889884, 0.10563929, 0.09726452)
+
 
 def patch_tile(rgb_file, gt_file, patch_size, pad, overlap):
     """
@@ -70,6 +74,17 @@ def patch_deepgloberoad(data_dir, save_dir, patch_size, pad, overlap, valid_perc
                 record_file_train.write('{} {}\n'.format(img_patchname, lbl_patchname))
     record_file_train.close()
     record_file_valid.close()
+
+
+def get_stats(img_dir):
+    from data import data_utils
+    dirs = ['road_trainv1/train', 'road_trainv2/train']
+    rgb_imgs = []
+    for dir_ in dirs:
+        rgb_imgs.extend([a[0] for a in data_utils.get_img_lbl(os.path.join(img_dir, dir_), 'sat.jpg', 'mask.png')])
+    ds_mean, ds_std = data_utils.get_ds_stats(rgb_imgs)
+    print('Mean: {}'.format(ds_mean))
+    print('Std: {}'.format(ds_std))
 
 
 def get_images(data_dir, valid_percent=0.14):
