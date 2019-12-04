@@ -294,3 +294,44 @@ def get_default_colors():
     prop_cycle = plt.rcParams['axes.prop_cycle']
     colors = prop_cycle.by_key()['color']
     return colors
+
+
+def parse_args(arg_list):
+    """
+    Parse the arguments in a recursive way
+    :param arg_list: the arguments in a list where each element is either key or val
+    :return: dictionary of arguments
+    """
+    def parse_args_helper(arg_l):
+        """
+        Recursively calling itself if it's a key or return the value otherwise
+        :param arg_l: argument list
+        :return:
+        """
+        while len(arg_l) > 0:
+            item = arg_list.pop(0)
+            if '--' in item:
+                return {item[2:]: parse_args_helper(arg_l)}
+            else:
+                return eval(item)
+
+    arg_dict = {}
+    while len(arg_list) > 0:
+        arg_dict.update(parse_args_helper(arg_list))
+    return arg_dict
+
+
+def update_flags(flags, cf_dict):
+    """
+    Overwrite the configs in flags if it is given by cf_dict
+    :param flags: dictionary of configurations, this is from the config.json file
+    :param cf_dict: dictionary of configurations, this is from command line
+    :return:
+    """
+    for k, v in cf_dict.items():
+        if k in flags:
+            if not isinstance(v, dict):
+                flags[k] = v
+            else:
+                update_flags(flags[k], v)
+    return flags

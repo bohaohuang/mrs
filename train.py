@@ -5,6 +5,7 @@
 
 # Built-in
 import os
+import sys
 import json
 import shutil
 import timeit
@@ -30,13 +31,14 @@ CONFIG_FILE = 'config.json'
 
 def read_config():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', default=CONFIG_FILE, type=str, help='config file location')
-    flags = parser.parse_args()
-    config_file = flags.config
-    flags = json.load(open(flags.config))
-
+    args, extras = parser.parse_known_args(sys.argv[1:])
+    cfg_dict = misc_utils.parse_args(extras)
+    if 'config' not in cfg_dict:
+        cfg_dict['config'] = 'config.json'
+    flags = json.load(open(cfg_dict['config']))
+    flags = misc_utils.update_flags(flags, cfg_dict)
+    flags['config'] = cfg_dict['config']
     flags['save_dir'] = os.path.join(flags['trainer']['save_root'], network_utils.unique_model_name(flags))
-    flags['config'] = config_file
 
     if 'imagenet' not in flags:
         flags['imagenet'] = 'True'
