@@ -3,7 +3,7 @@
 
 ## Installation
 ### Dependencies
-- PyTorch >= 0.4
+- PyTorch >= 1.1
 - [TensorboardX](https://github.com/lanpa/tensorboardX)
 - [TorchSummary](https://github.com/sksq96/pytorch-summary)
 - [Albumentation](https://github.com/albu/albumentations)
