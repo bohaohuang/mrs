@@ -8,6 +8,10 @@
 - [TorchSummary](https://github.com/sksq96/pytorch-summary)
 - [Albumentation](https://github.com/albu/albumentations)
 
+## Demos
+- [Object-wise scoring](./demo/object_scoring.ipynb)
+- [Results visualization](./demo/results_visualization.ipynb)
+
 ## Pretrained Models
 | Encoder Name | Decoder Name | Dataset   | Label    | Score (IoU) | Size    | Model |
 |:------------:|:------------:|:---------:|:--------:|:-----------:|:--------|:-----:|
@@ -52,6 +56,7 @@
     - [X] Evaluate Report & Prediction Map
 - [ ] Results visualization
 - [ ] Class weights on criterions
+
 ## Known Bugs
 - [ ] Unable to do model-wise data parallel
 - [ ] [Failed to load models that trained on multiple gpus](https://github.com/bohaohuang/mrs/issues/8)
