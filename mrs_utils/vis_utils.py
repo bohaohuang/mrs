@@ -97,7 +97,34 @@ def make_tb_image(img, lbl, pred, n_class, mean, std, chanel_first=True):
     return banner
 
 
-def compare_figures(images, nrows_ncols, show_axis=False, fig_size=(10, 8), show_fig=True):
+def make_cmp_mask(lbl, pred, tp_mask_color=(0, 255, 0), fp_mask_color=(255, 0, 0), fn_mask_color=(0, 0, 255)):
+    """
+    Make compare mask for visualization purpose, the label and prediction maps should be binary and the truth value can
+    only be 1
+    :param lbl: the label map with dimension height * width
+    :param pred: the prediction map with dimension height * width
+    :param tp_mask_color: the rgb color of TP pixels, green by default
+    :param fp_mask_color: the rgb color of FP pixels, red by default
+    :param fn_mask_color: the rgb color of FN pixels, blue by default
+    :return:
+    """
+    assert lbl.shape == pred.shape
+    if np.max(lbl) != 1:
+        lbl = lbl / np.max(lbl)
+    if np.max(pred) != 1:
+        pred = pred / np.max(pred)
+    cmp_mask = 255 * np.ones((*lbl.shape, 3), dtype=np.uint8)
+    tp_mask = (lbl == 1) * (lbl == pred)
+    fp_mask = (pred - lbl) == 1
+    fn_mask = (lbl - pred) == 1
+    cmp_mask[tp_mask, :] = tp_mask_color
+    cmp_mask[fp_mask, :] = fp_mask_color
+    cmp_mask[fn_mask, :] = fn_mask_color
+    return cmp_mask
+
+
+def compare_figures(images, nrows_ncols, show_axis=False, fig_size=(10, 8), show_fig=True,
+                    title_list=None):
     """
     Show three figures in a row, link their axes
     :param img_1: image to show on top left
@@ -111,12 +138,16 @@ def compare_figures(images, nrows_ncols, show_axis=False, fig_size=(10, 8), show
     :return:
     """
     from mpl_toolkits.axes_grid1 import Grid
+    if title_list:
+        assert len(title_list) == len(images)
     fig = plt.figure(figsize=fig_size)
     grid = Grid(fig, rect=111, nrows_ncols=nrows_ncols, axes_pad=0.25, label_mode='L', share_all=True)
     for i, (ax, img) in enumerate(zip(grid, images)):
         ax.imshow(img)
         if not show_axis:
             ax.axis('off')
+        if title_list:
+            ax.set_title(title_list[i])
     plt.tight_layout()
     if show_fig:
         plt.show()
