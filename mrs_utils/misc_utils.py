@@ -355,5 +355,9 @@ def historical_update_flag(flags, cf_dict):
         flags['trainer']['loss_weights'] = 'None'
     if isinstance(flags['trainer']['bp_loss_idx'], str):
         flags['trainer']['bp_loss_idx'] = eval(flags['trainer']['bp_loss_idx'])
+    if isinstance(flags['trainer']['bp_loss_idx'], int):
+        flags['trainer']['bp_loss_idx'] = (flags['trainer']['bp_loss_idx'],)
+    if isinstance(flags['trainer']['loss_weights'], int):
+        flags['trainer']['loss_weights'] = (flags['trainer']['loss_weights'],)
 
     return flags
