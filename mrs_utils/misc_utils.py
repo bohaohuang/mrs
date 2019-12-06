@@ -338,4 +338,26 @@ def update_flags(flags, cf_dict):
                 flags[k] = v
             else:
                 update_flags(flags[k], v)
+    return historical_update_flag(flags, cf_dict)
+
+
+def historical_update_flag(flags, cf_dict):
+    """
+    This function updates flag to make it backward compatible with old versions
+    :param flags: dictionary of configurations, this is from the config.json file
+    :param cf_dict: dictionary of configurations, this is from command line
+    :return:
+    """
+    flags['config'] = cf_dict['config']
+    if 'imagenet' not in flags:
+        flags['imagenet'] = 'True'
+    if 'loss_weights' not in flags['trainer']:
+        flags['trainer']['loss_weights'] = 'None'
+    if isinstance(flags['trainer']['bp_loss_idx'], str):
+        flags['trainer']['bp_loss_idx'] = eval(flags['trainer']['bp_loss_idx'])
+    if isinstance(flags['trainer']['bp_loss_idx'], int):
+        flags['trainer']['bp_loss_idx'] = (flags['trainer']['bp_loss_idx'],)
+    if isinstance(flags['trainer']['loss_weights'], int):
+        flags['trainer']['loss_weights'] = (flags['trainer']['loss_weights'],)
+
     return flags

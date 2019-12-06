@@ -19,6 +19,7 @@ from torchsummary import summary
 
 
 # Own modules
+from mrs_utils import misc_utils
 
 
 def write_and_print(writer, phase, current_epoch, total_epoch, loss_dict, s_time):
@@ -222,15 +223,29 @@ def save(model, epochs, optm, loss_dict, save_name):
     print('Saved model at {}'.format(save_name))
 
 
+def make_criterion_str(cfg):
+    """
+    Make a string for criterion used, the format will be [criterion a][weight]_[criterion b][weight]
+    :param cfg: config dictionary
+    :return:
+    """
+    criterion = cfg['trainer']['criterion_name'].split(',')
+    bp_idx = [int(a) for a in cfg['trainer']['bp_loss_idx']]
+    bp_criterion = [criterion[a] for a in bp_idx]
+    loss_weights = [misc_utils.float2str(float(a)) for a in eval(cfg['trainer']['loss_weights'])]
+    return '_'.join('{}{}'.format(a, b) for (a, b) in zip(bp_criterion, loss_weights))
+
+
 def unique_model_name(cfg):
     """
     Make a unique model name based on the config file arguments
     :param cfg: config dictionary
     :return: unique model string
     """
+    criterion_str = make_criterion_str(cfg)
     decay_str = '_'.join(str(ds) for ds in eval(cfg['optimizer']['decay_step']))
     dr_str = str(cfg['optimizer']['decay_rate']).replace('.', 'p')
-    return 'ec{}_dc{}_ds{}_lre{:.0e}_lrd{:.0e}_ep{}_bs{}_ds{}_dr{}'.format(
+    return 'ec{}_dc{}_ds{}_lre{:.0e}_lrd{:.0e}_ep{}_bs{}_ds{}_dr{}_cr{}'.format(
         cfg['encoder_name'], cfg['decoder_name'], cfg['dataset']['ds_name'], cfg['optimizer']['learn_rate_encoder'],
         cfg['optimizer']['learn_rate_decoder'], cfg['trainer']['epochs'], cfg['dataset']['batch_size'],
-        decay_str, dr_str)
+        decay_str, dr_str, criterion_str)

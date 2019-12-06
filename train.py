@@ -34,15 +34,10 @@ def read_config():
     args, extras = parser.parse_known_args(sys.argv[1:])
     cfg_dict = misc_utils.parse_args(extras)
     if 'config' not in cfg_dict:
-        cfg_dict['config'] = 'config.json'
+        cfg_dict['config'] = CONFIG_FILE
     flags = json.load(open(cfg_dict['config']))
     flags = misc_utils.update_flags(flags, cfg_dict)
-    flags['config'] = cfg_dict['config']
     flags['save_dir'] = os.path.join(flags['trainer']['save_root'], network_utils.unique_model_name(flags))
-
-    if 'imagenet' not in flags:
-        flags['imagenet'] = 'True'
-
     return flags
 
 
@@ -126,7 +121,8 @@ def train_model(args, device, parallel):
                 model.eval()
 
             loss_dict = model.step(train_val_loaders[phase], device, optm, phase, criterions,
-                                   args['trainer']['bp_loss_idx'], True, mean, std)
+                                   args['trainer']['bp_loss_idx'], True, mean, std,
+                                   loss_weights=eval(args['trainer']['loss_weights']))
             network_utils.write_and_print(writer, phase, epoch, args['trainer']['epochs'], loss_dict, start_time)
 
         # save the model
