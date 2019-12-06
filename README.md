@@ -44,11 +44,11 @@
     - [X] [DLinkNet](./network/dlinknet.py)
     - [X] [PSPNet](./network/pspnet.py)
     - [X] [DeepLabV3+](./network/deeplabv3.py)
-- [ ] Different Losses:
+- [X] Different Losses:
     - [X] Xent
     - [X] Jaccard Approximation
     - [X] Focal Loss
-    - [ ] Lovasz softmax (https://github.com/bermanmaxim/LovaszSoftmax/tree/master/pytorch)
+    - [X] Lovasz softmax (https://github.com/bermanmaxim/LovaszSoftmax/tree/master/pytorch)
     - [X] Weighted combination of arbitrary supported losses
 - [X] Multi GPU Training
 - [X] Evaluation
