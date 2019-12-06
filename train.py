@@ -34,7 +34,7 @@ def read_config():
     args, extras = parser.parse_known_args(sys.argv[1:])
     cfg_dict = misc_utils.parse_args(extras)
     if 'config' not in cfg_dict:
-        cfg_dict['config'] = 'config.json'
+        cfg_dict['config'] = CONFIG_FILE
     flags = json.load(open(cfg_dict['config']))
     flags = misc_utils.update_flags(flags, cfg_dict)
     flags['config'] = cfg_dict['config']
