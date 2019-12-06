@@ -56,8 +56,8 @@ def create_loss(args, **kwargs):
     :return:
     """
     criterions = []
-    if 'class_weight' in kwargs['trainer']:
-        class_weight = eval(kwargs['trainer']['class_weight'])
+    if 'class_weight' in args['trainer']:
+        class_weight = eval(args['trainer']['class_weight'])
     else:
         class_weight = (1, 1)
     for c_name in misc_utils.stem_string(args['trainer']['criterion_name']).split(','):
@@ -70,6 +70,8 @@ def create_loss(args, **kwargs):
             criterions.append(metric_utils.SoftIoULoss(kwargs['device']))
         elif c_name == 'focal':
             criterions.append(metric_utils.FocalLoss(gamma=args['trainer']['gamma'], alpha=args['trainer']['alpha']))
+        elif c_name == 'lovasz':
+            criterions.append(metric_utils.LovaszSoftmax())
         else:
             raise NotImplementedError('Criterion type {} is not supported'.format(args['trainer']['criterion_name']))
     return criterions

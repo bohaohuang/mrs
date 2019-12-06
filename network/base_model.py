@@ -59,14 +59,22 @@ class Base(nn.Module):
         ]
 
     def step(self, data_loader, device, optm, phase, criterions, bp_loss_idx=0, save_image=True,
-             mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
+             mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), loss_weights=None):
         """
         This function does one forward and backward path in the training
         Print necessary message
         :param kwargs:
         :return:
         """
-        # TODO add self.lbl_margin into consideration and remove corresponding functions in unet class
+        if isinstance(bp_loss_idx, int):
+            bp_loss_idx = (bp_loss_idx,)
+        if loss_weights is None:
+            loss_weights = {a: 1.0 for a in bp_loss_idx}
+        else:
+            assert len(loss_weights) == len(bp_loss_idx)
+            loss_weights = [a/sum(loss_weights) for a in loss_weights]
+            loss_weights = {a: b for (a, b) in zip(bp_loss_idx, loss_weights)}
+
         loss_dict = {}
         for img_cnt, (image, label) in enumerate(tqdm(data_loader, desc='{}'.format(phase))):
             image = Variable(image, requires_grad=True).to(device)
@@ -84,12 +92,15 @@ class Base(nn.Module):
             # crop margin if necessary & reduce channel dimension
             if self.lbl_margin > 0:
                 label = label[:, self.lbl_margin:-self.lbl_margin, self.lbl_margin:-self.lbl_margin]
+            loss_all = 0
             for c_cnt, c in enumerate(criterions):
                 loss = c(pred, label)
-                if phase == 'train' and c_cnt == bp_loss_idx:
-                    loss.backward()
-                    optm.step()
+                if phase == 'train' and c_cnt in bp_loss_idx:
+                    loss_all += loss_weights[c_cnt] * loss
                 c.update(loss, image.size(0))
+            if phase == 'train':
+                loss_all.backward()
+                optm.step()
 
             if save_image and img_cnt == 0:
                 img_image = image.detach().cpu().numpy()
