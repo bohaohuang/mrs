@@ -232,8 +232,12 @@ def make_criterion_str(cfg):
     criterion = cfg['trainer']['criterion_name'].split(',')
     bp_idx = [int(a) for a in cfg['trainer']['bp_loss_idx']]
     bp_criterion = [criterion[a] for a in bp_idx]
-    loss_weights = [misc_utils.float2str(float(a)) for a in eval(cfg['trainer']['loss_weights'])]
-    return '_'.join('{}{}'.format(a, b) for (a, b) in zip(bp_criterion, loss_weights))
+    try:
+        loss_weights = [misc_utils.float2str(float(a)) for a in eval(cfg['trainer']['loss_weights'])]
+        return '_'.join('{}{}'.format(a, b) for (a, b) in zip(bp_criterion, loss_weights))
+    except TypeError:
+        assert len(bp_criterion) == 1
+        return '_'.join('{}'.format(a) for a in bp_criterion)
 
 
 def unique_model_name(cfg):
