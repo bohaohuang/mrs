@@ -148,13 +148,13 @@ class FocalLoss(LossClass):
     Focal loss: this code comes from
     https://github.com/mbsariyildiz/focal-loss.pytorch/blob/6551bd3e433ce41020b6bc8d99221eb6cd10ae17/focalloss.py#L33
     """
-    def __init__(self, gamma=0, alpha=None, size_average=True):
+    def __init__(self, device, gamma=0, alpha=None, size_average=True):
         super(FocalLoss, self).__init__()
         self.name = 'focal'
         self.gamma = gamma
         self.alpha = alpha
-        if isinstance(alpha, (float, int)): self.alpha = torch.Tensor([alpha, 1 - alpha])
-        if isinstance(alpha, list): self.alpha = torch.Tensor(alpha)
+        if isinstance(alpha, (float, int)): self.alpha = torch.Tensor([alpha, 1 - alpha]).to(device)
+        if isinstance(alpha, list): self.alpha = torch.Tensor(alpha).to(device)
         self.size_average = size_average
 
     def forward(self, input, target):
