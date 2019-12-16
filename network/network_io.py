@@ -87,7 +87,7 @@ def load_config(model_dir):
     """
     config_file = os.path.join(model_dir, 'config.json')
     args = misc_utils.load_file(config_file)
-    return args
+    return misc_utils.historical_process_flag(args)
 
 
 def easy_load(model_dir, epoch=None):

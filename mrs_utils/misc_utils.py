@@ -349,6 +349,15 @@ def historical_update_flag(flags, cf_dict):
     :return:
     """
     flags['config'] = cf_dict['config']
+
+    return historical_process_flag(flags)
+
+
+def historical_process_flag(flags):
+    """
+    This function updates flag to make it backward compatible with old versions
+    :param flags: dictionary of configurations, this is from the config.json file
+    """
     if 'imagenet' not in flags:
         flags['imagenet'] = 'True'
     if 'loss_weights' not in flags['trainer']:
@@ -359,5 +368,4 @@ def historical_update_flag(flags, cf_dict):
         flags['trainer']['bp_loss_idx'] = (flags['trainer']['bp_loss_idx'],)
     if isinstance(flags['trainer']['loss_weights'], int):
         flags['trainer']['loss_weights'] = (flags['trainer']['loss_weights'],)
-
     return flags
