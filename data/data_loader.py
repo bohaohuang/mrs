@@ -15,6 +15,22 @@ from torch.utils import data
 from mrs_utils import misc_utils
 
 
+def get_file_paths(parent_path, file_list):
+    """
+    Parse the paths into absolute paths
+    :param parent_path: the parent paths of all the data files
+    :param file_list: the list of files
+    :return:
+    """
+    img_list = []
+    lbl_list = []
+    for fl in file_list:
+        img_filename, lbl_filename = [os.path.join(parent_path, a) for a in fl.strip().split(' ')]
+        img_list.append(img_filename)
+        lbl_list.append(lbl_filename)
+    return img_list, lbl_list
+
+
 class RSDataLoader(data.Dataset):
     def __init__(self, parent_path, file_list, transforms=None):
         """
@@ -30,24 +46,31 @@ class RSDataLoader(data.Dataset):
         :param file_list: a text file where each row contains rgb and gt files separated by space
         :param transforms: albumentation transforms
         """
-        self.file_list = misc_utils.load_file(file_list)
-        self.parent_path = parent_path
+        try:
+            file_list = misc_utils.load_file(file_list)
+            self.img_list, self.lbl_list = get_file_paths(parent_path, file_list)
+        except OSError:
+            file_list = eval(file_list)
+            parent_path = eval(parent_path)
+            self.img_list, self.lbl_list = [], []
+            for fl, pp in zip(file_list, parent_path):
+                img_list, lbl_list = get_file_paths(pp, misc_utils.load_file(fl))
+                self.img_list.extend(img_list)
+                self.lbl_list.extend(lbl_list)
         self.transforms = transforms
 
     def __len__(self):
-        return len(self.file_list)
+        return len(self.img_list)
 
     def __getitem__(self, index):
-        rgb_filename, gt_filename = [os.path.join(self.parent_path, a)
-                                     for a in self.file_list[index].strip().split(' ')]
-        rgb = misc_utils.load_file(rgb_filename)
-        gt = misc_utils.load_file(gt_filename)
+        rgb = misc_utils.load_file(self.img_list[index])
+        lbl = misc_utils.load_file(self.lbl_list[index])
         if self.transforms:
             for tsfm in self.transforms:
-                tsfm_image = tsfm(image=rgb, mask=gt)
+                tsfm_image = tsfm(image=rgb, mask=lbl)
                 rgb = tsfm_image['image']
-                gt = tsfm_image['mask']
-        return rgb, gt
+                lbl = tsfm_image['mask']
+        return rgb, lbl
 
 
 class HDF5DataLoader(data.Dataset):
@@ -94,6 +117,9 @@ def get_loader(data_path, file_name, transforms=None):
         return RSDataLoader(data_path, file_name, transforms)
     elif file_name[-4:] == 'hdf5':
         return HDF5DataLoader(data_path, file_name, transforms)
+    elif file_name[-1] == ']':
+        # multi dataset
+        return RSDataLoader(data_path, file_name, transforms)
     else:
         raise NotImplementedError('File extension {} is not supportted yet'.format(os.path.splitext(file_name))[-1])
 
