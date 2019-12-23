@@ -25,7 +25,7 @@ def set_gpu(gpu, enable_benchmark=True):
     :param enable_benchmark: if True, will let CUDNN find optimal set of algorithms for input configuration
     :return: device instance
     """
-    gpu = str(int(gpu))
+    gpu = str(gpu)
     if len(str(gpu)) > 1:
         os.environ["CUDA_VISIBLE_DEVICES"] = gpu
         parallel = True
