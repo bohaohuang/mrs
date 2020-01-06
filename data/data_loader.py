@@ -136,7 +136,7 @@ class MixedBatchSampler(data.sampler.Sampler):
         self.ds_len = ds_len
         self.ratio = ratio
         self.batch_size = sum(ratio)
-        self.offset = [0] + [a for a in self.ds_len[:-1]]
+        self.offset = [int(np.sum(self.ds_len[:a])) for a in range(len(ds_len))]
 
     def __len__(self):
         return self.ds_len[0]
@@ -153,11 +153,12 @@ if __name__ == '__main__':
     import albumentations as A
 
     tsfms = [A.RandomCrop(512, 512)]
-    ds1 = RSDataLoader(r'/hdd/mrs/inria/ps512_pd0_ol0/patches', r'/hdd/mrs/inria/ps512_pd0_ol0/file_list_valid.txt', transforms=tsfms)
+    ds1 = RSDataLoader(r'/hdd/mrs/inria/ps512_pd0_ol0/patches', r'/hdd/mrs/inria/ps512_pd0_ol0/file_list_train_kt.txt', transforms=tsfms)
     ds2 = RSDataLoader(r'/hdd/mrs/synthinel_1/patches', r'/hdd/mrs/synthinel_1/file_list_train.txt', transforms=tsfms)
-    ds = data.ConcatDataset([ds1, ds2])
-    loader = data.DataLoader(ds, sampler=MixedBatchSampler((len(ds1), len(ds2)), (3, 3)), batch_size=6)
+    ds3 = RSDataLoader(r'/hdd/mrs/inria/ps512_pd0_ol0/patches', r'/hdd/mrs/inria/ps512_pd0_ol0/file_list_valid_a.txt', transforms=tsfms)
+    ds = data.ConcatDataset([ds1, ds2, ds3])
+    loader = data.DataLoader(ds, sampler=MixedBatchSampler((len(ds1), len(ds2), len(ds3)), (5, 0, 0)), batch_size=5)
 
     for cnt, (rgb, gt) in enumerate(loader):
         from mrs_utils import vis_utils
-        vis_utils.compare_figures(rgb, (2, 3), fig_size=(12, 6))
+        vis_utils.compare_figures(rgb, (1, 5), fig_size=(12, 6))
