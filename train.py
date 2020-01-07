@@ -144,7 +144,7 @@ def main():
     misc_utils.set_random_seed(cfg['random_seed'])
     # make training directory
     misc_utils.make_dir_if_not_exist(cfg['save_dir'])
-    shutil.copyfile(cfg['config'], os.path.join(cfg['save_dir'], 'config.json'))
+    misc_utils.save_file(os.path.join(cfg['save_dir'], 'config.json'), cfg)
 
     # train the model
     train_model(cfg, device, parallel)
