@@ -202,6 +202,10 @@ def load(model, model_path, relax_load=False, disable_parallel=False):
     except RuntimeError:
         pretrained_state = flex_load(model.state_dict(), checkpoint['state_dict'], relax_load, disable_parallel)
         model.load_state_dict(pretrained_state, strict=False)
+    except KeyError:
+        # FIXME this is a adhoc fix to be compatible with RSMoCo
+        pretrained_state = flex_load(model.state_dict(), checkpoint['model'], relax_load, disable_parallel)
+        model.load_state_dict(pretrained_state, strict=False)
 
 
 def save(model, epochs, optm, loss_dict, save_name):
