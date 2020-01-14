@@ -164,15 +164,19 @@ def get_ds_stats(img_files):
 def patch_tile(rgb_file, gt_file, patch_size, pad, overlap):
     """
     Extract the given rgb and gt tiles into patches
-    :param rgb_file: path to the rgb file
-    :param gt_file: path to the gt file
+    :param rgb_file: path to the rgb file or the rgb imagery
+    :param gt_file: path to the gt file or the gt mask
     :param patch_size: size of the patches, should be a tuple of (h, w)
     :param pad: #pixels to be padded around each tile, should be either one element or four elements
     :param overlap: #overlapping pixels between two patches in both vertical and horizontal direction
     :return: rgb and gt patches as well as coordinates
     """
-    rgb = misc_utils.load_file(rgb_file)
-    gt = misc_utils.load_file(gt_file)
+    if isinstance(rgb_file, str) and isinstance(gt_file, str):
+        rgb = misc_utils.load_file(rgb_file)
+        gt = misc_utils.load_file(gt_file)
+    else:
+        rgb = rgb_file
+        gt = gt_file
     np.testing.assert_array_equal(rgb.shape[:2], gt.shape)
     grid_list = make_grid(np.array(rgb.shape[:2]) + 2 * pad, patch_size, overlap)
     if pad > 0:
