@@ -32,7 +32,7 @@ def get_file_paths(parent_path, file_list):
 
 
 class RSDataLoader(data.Dataset):
-    def __init__(self, parent_path, file_list, transforms=None):
+    def __init__(self, parent_path, file_list, transforms=None, cls=0):
         """
         A data reader for the remote sensing dataset
         The dataset storage structure should be like
@@ -45,6 +45,7 @@ class RSDataLoader(data.Dataset):
         :param parent_path: path to a preprocessed remote sensing dataset
         :param file_list: a text file where each row contains rgb and gt files separated by space
         :param transforms: albumentation transforms
+        :param cls: if greater than 0, will yield a #classes dimension vector where 1 indicates corresponding class exist
         """
         try:
             file_list = misc_utils.load_file(file_list)
@@ -58,9 +59,13 @@ class RSDataLoader(data.Dataset):
                 self.img_list.extend(img_list)
                 self.lbl_list.extend(lbl_list)
         self.transforms = transforms
+        self.cls = cls
 
     def __len__(self):
         return len(self.img_list)
+
+    def one_hot(self, x):
+        return np.eye(self.cls)[x]
 
     def __getitem__(self, index):
         rgb = misc_utils.load_file(self.img_list[index])
@@ -70,7 +75,15 @@ class RSDataLoader(data.Dataset):
                 tsfm_image = tsfm(image=rgb, mask=lbl)
                 rgb = tsfm_image['image']
                 lbl = tsfm_image['mask']
-        return rgb, lbl
+        if self.cls:
+            if len(lbl.shape) == 2:
+                cls = int(np.mean(lbl) > 0)
+                cls = self.one_hot(cls)
+            else:
+                cls = (np.sum(lbl, axis=-1) > 0).astype(np.int)
+            return rgb, lbl, cls
+        else:
+            return rgb, lbl
 
 
 class HDF5DataLoader(data.Dataset):
@@ -153,12 +166,17 @@ if __name__ == '__main__':
     import albumentations as A
 
     tsfms = [A.RandomCrop(512, 512)]
-    ds1 = RSDataLoader(r'/hdd/mrs/inria/ps512_pd0_ol0/patches', r'/hdd/mrs/inria/ps512_pd0_ol0/file_list_train_kt.txt', transforms=tsfms)
-    ds2 = RSDataLoader(r'/hdd/mrs/synthinel_1/patches', r'/hdd/mrs/synthinel_1/file_list_train.txt', transforms=tsfms)
+    ds1 = RSDataLoader(r'/hdd/mrs/inria/ps512_pd0_ol0/patches', r'/hdd/mrs/inria/ps512_pd0_ol0/file_list_train_kt.txt', transforms=tsfms, cls=2)
+    '''ds2 = RSDataLoader(r'/hdd/mrs/synthinel_1/patches', r'/hdd/mrs/synthinel_1/file_list_train.txt', transforms=tsfms)
     ds3 = RSDataLoader(r'/hdd/mrs/inria/ps512_pd0_ol0/patches', r'/hdd/mrs/inria/ps512_pd0_ol0/file_list_valid_a.txt', transforms=tsfms)
     ds = data.ConcatDataset([ds1, ds2, ds3])
     loader = data.DataLoader(ds, sampler=MixedBatchSampler((len(ds1), len(ds2), len(ds3)), (5, 0, 0)), batch_size=5)
 
     for cnt, (rgb, gt) in enumerate(loader):
         from mrs_utils import vis_utils
-        vis_utils.compare_figures(rgb, (1, 5), fig_size=(12, 6))
+        vis_utils.compare_figures(rgb, (1, 5), fig_size=(12, 6))'''
+
+    for cnt, (rgb, gt, cls) in enumerate(ds1):
+        from mrs_utils import vis_utils
+        print(cls)
+        vis_utils.compare_figures([rgb, gt], (1, 2), fig_size=(12, 5))
