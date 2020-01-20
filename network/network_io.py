@@ -9,6 +9,9 @@ import os
 # Libs
 
 # Pytorch
+import albumentations as A
+from torch import optim
+from albumentations.pytorch import ToTensorV2
 
 # Own modules
 from mrs_utils import misc_utils, metric_utils
@@ -23,6 +26,10 @@ def create_model(args):
     """
     args['encoder_name'] = misc_utils.stem_string(args['encoder_name'])
     args['decoder_name'] = misc_utils.stem_string(args['decoder_name'])
+    if args['optimizer']['aux_loss']:
+        aux_loss = True
+    else:
+        aux_loss = False
 
     # TODO this is for compatible issue only, we might want to get rid of this later
     if 'imagenet' not in args:
@@ -31,19 +38,19 @@ def create_model(args):
     if args['decoder_name'] == 'unet':
         if args['encoder_name'] == 'base':
             model = unet.UNet(sfn=args['sfn'], n_class=args['dataset']['class_num'],
-                              encoder_name=args['encoder_name'])
+                              encoder_name=args['encoder_name'], aux_loss=aux_loss)
         else:
             model = unet.UNet(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'],
-                              pretrained=eval(args['imagenet']))
+                              pretrained=eval(args['imagenet']), aux_loss=aux_loss)
     elif args['decoder_name'] in ['psp', 'pspnet']:
         model = pspnet.PSPNet(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'],
-                              pretrained=eval(args['imagenet']))
+                              pretrained=eval(args['imagenet']), aux_loss=aux_loss)
     elif args['decoder_name'] == 'dlinknet':
         model = dlinknet.DLinkNet(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'],
-                                  pretrained=eval(args['imagenet']))
+                                  pretrained=eval(args['imagenet']), aux_loss=aux_loss)
     elif args['decoder_name'] == 'deeplabv3':
         model = deeplabv3.DeepLabV3(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'],
-                                    pretrained=eval(args['imagenet']))
+                                    pretrained=eval(args['imagenet']), aux_loss=aux_loss)
     else:
         raise NotImplementedError('Decoder structure {} is not supported'.format(args['decoder_name']))
     return model
@@ -56,13 +63,9 @@ def create_loss(args, **kwargs):
     :return:
     """
     criterions = []
-    if 'class_weight' in args['trainer']:
-        class_weight = eval(args['trainer']['class_weight'])
-    else:
-        class_weight = (1, 1)
     for c_name in misc_utils.stem_string(args['trainer']['criterion_name']).split(','):
         if c_name == 'xent':
-            criterions.append(metric_utils.CrossEntropyLoss(class_weight))
+            criterions.append(metric_utils.CrossEntropyLoss(args['trainer']['class_weight']))
         elif c_name == 'iou':
             # this metric is non-differentiable
             criterions.append(metric_utils.IoU())
@@ -76,6 +79,44 @@ def create_loss(args, **kwargs):
         else:
             raise NotImplementedError('Criterion type {} is not supported'.format(args['trainer']['criterion_name']))
     return criterions
+
+
+def create_optimizer(optm_name, train_params, lr):
+    """
+    Create optimizer based on configuration
+    :param optm_name: the optimizer name defined in config.py
+    :param train_params: learning rate arrangement for the training parameters
+    :param lr: learning rate
+    :return: corresponding torch optim class
+    """
+    o_name = misc_utils.stem_string(optm_name)
+    if o_name == 'sgd':
+        optm = optim.SGD(train_params, lr=lr, momentum=0.9, weight_decay=5e-4)
+    elif o_name == 'adam':
+        optm = optim.Adam(train_params, lr=lr)
+    else:
+        raise NotImplementedError('Optimizer name {} is not supported'.format(optm_name))
+    return optm
+
+
+def create_tsfm(args, mean, std):
+    """
+    Create transform based on configuration
+    :param args: the argument parameters defined in config.py
+    :param mean: mean of the dataset
+    :param std: std of the dataset
+    :return: corresponding train and validation transforms
+    """
+    input_size = eval(args['dataset']['input_size'])
+    crop_size = eval(args['dataset']['crop_size'])
+    tsfms = [A.Flip(), A.RandomRotate90(), A.Normalize(mean=mean, std=std), ToTensorV2()]
+    if input_size[0] != crop_size[0] or input_size[1] != crop_size[1]:
+        tsfm_train = A.Compose([A.RandomCrop(*crop_size)] + tsfms)
+        tsfm_valid = A.Compose([A.RandomCrop(*crop_size)] + tsfms[2:])
+    else:
+        tsfm_train = A.Compose(tsfms)
+        tsfm_valid = A.Compose(tsfms[-2:])
+    return tsfm_train, tsfm_valid
 
 
 def load_config(model_dir):

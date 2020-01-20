@@ -7,6 +7,7 @@ This file defines data loader for some benchmarked remote sensing datasets
 import os
 
 # Libs
+import torch
 import h5py
 import numpy as np
 from torch.utils import data
@@ -31,8 +32,18 @@ def get_file_paths(parent_path, file_list):
     return img_list, lbl_list
 
 
+def one_hot(class_n, x):
+    """
+    Make scalar into one-hot vector
+    :param class_n: number of classes
+    :param x: the scalar
+    :return: converted one-hot vector
+    """
+    return torch.eye(class_n)[x]
+
+
 class RSDataLoader(data.Dataset):
-    def __init__(self, parent_path, file_list, transforms=None, cls=0):
+    def __init__(self, parent_path, file_list, transforms=None, n_class=0):
         """
         A data reader for the remote sensing dataset
         The dataset storage structure should be like
@@ -45,7 +56,7 @@ class RSDataLoader(data.Dataset):
         :param parent_path: path to a preprocessed remote sensing dataset
         :param file_list: a text file where each row contains rgb and gt files separated by space
         :param transforms: albumentation transforms
-        :param cls: if greater than 0, will yield a #classes dimension vector where 1 indicates corresponding class exist
+        :param n_class: if greater than 0, will yield a #classes dimension vector where 1 indicates corresponding class exist
         """
         try:
             file_list = misc_utils.load_file(file_list)
@@ -59,13 +70,10 @@ class RSDataLoader(data.Dataset):
                 self.img_list.extend(img_list)
                 self.lbl_list.extend(lbl_list)
         self.transforms = transforms
-        self.cls = cls
+        self.n_class = n_class
 
     def __len__(self):
         return len(self.img_list)
-
-    def one_hot(self, x):
-        return np.eye(self.cls)[x]
 
     def __getitem__(self, index):
         rgb = misc_utils.load_file(self.img_list[index])
@@ -75,19 +83,19 @@ class RSDataLoader(data.Dataset):
                 tsfm_image = tsfm(image=rgb, mask=lbl)
                 rgb = tsfm_image['image']
                 lbl = tsfm_image['mask']
-        if self.cls:
+        if self.n_class:
             if len(lbl.shape) == 2:
-                cls = int(np.mean(lbl) > 0)
-                cls = self.one_hot(cls)
+                cls = int(torch.mean(lbl.type(torch.float)) > 0)
+                cls = one_hot(self.n_class, cls).type(torch.float)
             else:
-                cls = (np.sum(lbl, axis=-1) > 0).astype(np.int)
+                cls = (torch.sum(lbl, dim=-1) > 0).type(torch.float)
             return rgb, lbl, cls
         else:
             return rgb, lbl
 
 
 class HDF5DataLoader(data.Dataset):
-    def __init__(self, parent_path, file_list, transforms=None):
+    def __init__(self, parent_path, file_list, transforms=None, n_class=0):
         """
         A data reader for the remote sensing dataset in hdf5 format
         Training with hdf5 data is generally >10% faster
@@ -95,10 +103,12 @@ class HDF5DataLoader(data.Dataset):
         :param parent_path: path to a preprocessed remote sensing dataset
         :param file_list: a text file where each row contains rgb and gt files separated by space
         :param transforms: albumentation transforms
+        :param n_class: if greater than 0, will yield a #classes dimension vector where 1 indicates corresponding class exist
         """
         self.file_path = os.path.join(parent_path, file_list)
         self.transforms = transforms
         self.dataset = None
+        self.n_class = n_class
         with h5py.File(self.file_path, 'r') as file:
             self.dataset_len = file['img'].shape[0]
 
@@ -109,30 +119,39 @@ class HDF5DataLoader(data.Dataset):
         if self.dataset is None:
             self.dataset = h5py.File(self.file_path, 'r')
         rgb = self.dataset['img'][index, ...]
-        gt = self.dataset['lbl'][index, ...]
+        lbl = self.dataset['lbl'][index, ...]
         if self.transforms:
             for tsfm in self.transforms:
-                tsfm_image = tsfm(image=rgb, mask=gt)
+                tsfm_image = tsfm(image=rgb, mask=lbl)
                 rgb = tsfm_image['image']
-                gt = tsfm_image['mask']
-        return rgb, gt
+                lbl = tsfm_image['mask']
+        if self.n_class:
+            if len(lbl.shape) == 2:
+                cls = int(torch.mean(lbl.type(torch.float)) > 0)
+                cls = one_hot(self.n_class, cls).type(torch.float)
+            else:
+                cls = (torch.sum(lbl, dim=-1) > 0).type(torch.float)
+            return rgb, lbl, cls
+        else:
+            return rgb, lbl
 
 
-def get_loader(data_path, file_name, transforms=None):
+def get_loader(data_path, file_name, transforms=None, aux_loss=0):
     """
     Get the appropriate loader with the given file type
     :param data_path: path to a preprocessed remote sensing dataset
     :param file_name: name of the data file, could be a text file or hdf5 file
     :param transforms: albumentation transforms
+    :param aux_loss: if > 0, the dataloader will return patch-wise classification label
     :return: the corresponding loader
     """
     if file_name[-3:] == 'txt':
-        return RSDataLoader(data_path, file_name, transforms)
+        return RSDataLoader(data_path, file_name, transforms, aux_loss)
     elif file_name[-4:] == 'hdf5':
-        return HDF5DataLoader(data_path, file_name, transforms)
+        return HDF5DataLoader(data_path, file_name, transforms, aux_loss)
     elif file_name[-1] == ']':
         # multi dataset
-        return RSDataLoader(data_path, file_name, transforms)
+        return RSDataLoader(data_path, file_name, transforms, aux_loss)
     else:
         raise NotImplementedError('File extension {} is not supportted yet'.format(os.path.splitext(file_name))[-1])
 
@@ -166,7 +185,7 @@ if __name__ == '__main__':
     import albumentations as A
 
     tsfms = [A.RandomCrop(512, 512)]
-    ds1 = RSDataLoader(r'/hdd/mrs/inria/ps512_pd0_ol0/patches', r'/hdd/mrs/inria/ps512_pd0_ol0/file_list_train_kt.txt', transforms=tsfms, cls=2)
+    ds1 = RSDataLoader(r'/hdd/mrs/inria/ps512_pd0_ol0/patches', r'/hdd/mrs/inria/ps512_pd0_ol0/file_list_train_kt.txt', transforms=tsfms, n_class=2)
     '''ds2 = RSDataLoader(r'/hdd/mrs/synthinel_1/patches', r'/hdd/mrs/synthinel_1/file_list_train.txt', transforms=tsfms)
     ds3 = RSDataLoader(r'/hdd/mrs/inria/ps512_pd0_ol0/patches', r'/hdd/mrs/inria/ps512_pd0_ol0/file_list_valid_a.txt', transforms=tsfms)
     ds = data.ConcatDataset([ds1, ds2, ds3])
