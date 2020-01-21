@@ -124,17 +124,19 @@ class UNet(base_model.Base):
     """
     This module is the original Unet defined in paper
     """
-    def __init__(self, n_class, sfn=32, encoder_name='base', pretrained=True):
+    def __init__(self, n_class, sfn=32, encoder_name='base', pretrained=True, aux_loss=False):
         """
         Initialize the Unet model
         :param sfn: the start filter number, following blocks have n*sfn number of filters
         :param n_class: the number of class
         :param encoder_name: name of the encoder, could be 'base', 'vgg16'
         :param pretrained: if True, load the weights from pretrained model
+        :param aux_loss: if True, will create a classification branch for extracted features
         """
         super(UNet, self).__init__()
         self.n_class = n_class
         self.encoder_name = misc_utils.stem_string(encoder_name)
+        self.aux_loss = aux_loss
         if self.encoder_name == 'base':
             self.sfn = sfn
             self.encoder = UnetBaseEncoder(self.sfn)
@@ -156,6 +158,14 @@ class UNet(base_model.Base):
             conv_chan = [d_in//2+d_out for (d_in, d_out) in zip(self.decode_in_chans, self.decode_out_chans)]
             pad = 1
             up_sample = 0 if 'vgg' in self.encoder_name else 2
+        if self.aux_loss:
+            self.cls = nn.Sequential(
+                nn.Linear(self.decode_in_chans[0], 256),
+                nn.ReLU(),
+                nn.Linear(256, self.n_class)
+            )
+        else:
+            self.cls = None
         self.decoder = UnetDecoder(self.decode_in_chans, self.decode_out_chans, self.margins, self.n_class,
                                    conv_chan, pad, up_sample)
 
@@ -163,11 +173,13 @@ class UNet(base_model.Base):
         x = self.encoder(x)
         ftr, layers = x[0], x[1:]
         pred = self.decoder(ftr, layers)
-        return pred
+        if self.aux_loss:
+            aux = F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1))
+            return pred, self.cls(aux)
+        else:
+            return pred
 
 
 if __name__ == '__main__':
     from network import network_utils
     network_utils.network_summary(UNet, (3, 512, 512), sfn=32, n_class=2, encoder_name='resnet152')
-
-    # UnetRes50Encoder()

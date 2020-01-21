@@ -360,6 +360,17 @@ def historical_process_flag(flags):
     """
     if 'imagenet' not in flags:
         flags['imagenet'] = 'True'
+    if 'name' not in flags['optimizer']:
+        flags['optimizer']['name'] = 'sgd'
+    if 'aux_loss' not in flags['optimizer']:
+        flags['optimizer']['aux_loss'] = 0
+    if 'aux_loss' in flags['optimizer']:
+        if 'aux_loss_weight' not in flags['optimizer']:
+            flags['optimizer']['aux_loss_weight'] = 0.4
+    if 'class_weight' in flags['trainer']:
+        flags['trainer']['class_weight'] = eval(flags['trainer']['class_weight'])
+    else:
+        flags['trainer']['class_weight'] = (1, 1)
     if 'loss_weights' not in flags['trainer']:
         flags['trainer']['loss_weights'] = 'None'
     if isinstance(flags['trainer']['bp_loss_idx'], str):

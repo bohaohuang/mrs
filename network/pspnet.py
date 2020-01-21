@@ -11,13 +11,12 @@ from tqdm import tqdm
 # Pytorch
 import torch
 from torch import nn
-from torch.autograd import Variable
 from torch.nn import functional as F
 
 # Own modules
 from network import base_model
 from network.backbones import encoders
-from mrs_utils import misc_utils, vis_utils
+from mrs_utils import misc_utils
 
 
 class PSPDecoder(nn.Module):
@@ -78,27 +77,42 @@ class PSPNet(base_model.Base):
     This module is the original Unet defined in paper
     """
     def __init__(self, n_class, out_chan=1024, bin_sizes=(1, 2, 3, 6), drop_rate=0.3,
-                 encoder_name='vgg16', pretrained=True):
+                 encoder_name='vgg16', pretrained=True, aux_loss=False):
         """
         Initialize the Unet model
         :param n_class: the number of class
         :param encoder_name: name of the encoder, could be 'base', 'vgg16'
         :param pretrained: if True, load the weights from pretrained model
+        :param aux_loss: if True, will create a classification branch for extracted features
         """
         super(PSPNet, self).__init__()
         self.n_class = n_class
+        self.aux_loss = aux_loss
         self.encoder_name = misc_utils.stem_string(encoder_name)
         strides = (2, 2, 2, 1, 1)
         self.encoder = encoders.models(self.encoder_name, pretrained, strides, False)
         self.decoder = PSPDecoder(n_class, self.encoder.chans[0], out_chan, bin_sizes, drop_rate)
+        if self.aux_loss:
+            self.cls = nn.Sequential(
+                nn.Linear(self.encoder.chans[0], 256),
+                nn.ReLU(),
+                nn.Linear(256, self.n_class)
+            )
+        else:
+            self.cls = None
 
     def forward(self, x):
         ftr = self.encoder(x)
         pred = self.decoder(ftr)
-        return pred
+        if self.aux_loss:
+            aux = F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1))
+            return pred, self.cls(aux)
+        else:
+            return pred
 
 
 if __name__ == '__main__':
-    vgg16 = PSPNet(2, encoder_name='resnet152')
-    from torchsummary import summary
-    summary(vgg16, (3, 512, 512), device='cpu')
+    vgg16 = PSPNet(2, encoder_name='vgg16_bn', aux_loss=True)
+    x = torch.randn((5, 3, 512, 512))
+    y, cls = vgg16(x)
+    print(y.shape, cls.shape)

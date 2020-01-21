@@ -133,16 +133,37 @@ class DeepLabV3(base_model.Base):
     """
     This module implements the DeepLabV3 in paper https://arxiv.org/pdf/1802.02611.pdf
     """
-    def __init__(self, n_class, encoder_name='resnet34', pretrained=True, outchan=256, dropout_rate=0.5):
+    def __init__(self, n_class, encoder_name='resnet34', pretrained=True, outchan=256, dropout_rate=0.5,
+                 aux_loss=False):
         super(DeepLabV3, self).__init__()
         self.n_class = n_class
+        self.aux_loss = aux_loss
         self.encoder_name = encoder_name
         self.encoder = encoders.models(self.encoder_name, pretrained, (2, 2, 2, 2, 1), True)
         self.decoder = DeepLabV3Decoder(n_class, self.encoder.chans[0], self.encoder.chans[3], outchan, dropout_rate)
+        if self.aux_loss:
+            self.cls = nn.Sequential(
+                nn.Linear(self.encoder.chans[0], 256),
+                nn.ReLU(),
+                nn.Linear(256, self.n_class)
+            )
+        else:
+            self.cls = None
 
     def forward(self, x):
         input_size = x.size()[2:]
         x = self.encoder(x)
         ftr, layer = x[0], x[3]
         pred = self.decoder(ftr, layer, input_size)
-        return pred
+        if self.aux_loss:
+            aux = F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1))
+            return pred, self.cls(aux)
+        else:
+            return pred
+
+
+if __name__ == '__main__':
+    net = DeepLabV3(2, encoder_name='resnet101', aux_loss=True)
+    x = torch.randn((5, 3, 512, 512))
+    y, pred = net(x)
+    print(y.shape, pred.shape)

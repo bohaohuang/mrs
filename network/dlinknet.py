@@ -9,6 +9,7 @@
 
 # Pytorch
 from torch import nn
+from torch.nn import functional as F
 
 # Own modules
 from network import base_model
@@ -91,15 +92,24 @@ class DLinkNet(base_model.Base):
     This module is the original DLinknet defined in paper
     http://openaccess.thecvf.com/content_cvpr_2018_workshops/papers/w4/Zhou_D-LinkNet_LinkNet_With_CVPR_2018_paper.pdf
     """
-    def __init__(self, n_class, encoder_name='resnet34', pretrained=True):
+    def __init__(self, n_class, encoder_name='resnet34', pretrained=True, aux_loss=False):
         super(DLinkNet, self).__init__()
         self.n_class = n_class
+        self.aux_loss = aux_loss
         self.encoder_name = encoder_name
         self.encoder = encoders.models(self.encoder_name, pretrained, (2, 2, 2, 2, 2), True)
         if 'vgg' in self.encoder_name:
             self.decoder = DLinkNetDecoder(self.encoder.chans, n_class, final_upsample=False)
         else:
             self.decoder = DLinkNetDecoder(self.encoder.chans, n_class)
+        if self.aux_loss:
+            self.cls = nn.Sequential(
+                nn.Linear(self.encoder.chans[0], 256),
+                nn.ReLU(),
+                nn.Linear(256, self.n_class)
+            )
+        else:
+            self.cls = None
 
     def forward(self, x):
         # part a: encoder
@@ -107,5 +117,18 @@ class DLinkNet(base_model.Base):
         x = self.encoder(x)
         ftr, layers = x[0], x[1:-1]
         # part b and c: center dilation + decoder
-        ftr = self.decoder(ftr, layers, input_size)
-        return ftr
+        pred = self.decoder(ftr, layers, input_size)
+        if self.aux_loss:
+            aux = F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1))
+            return pred, self.cls(aux)
+        else:
+            return pred
+
+
+if __name__ == '__main__':
+    import torch
+
+    net = DLinkNet(2, encoder_name='resnet101', aux_loss=True)
+    x = torch.randn((5, 3, 512, 512))
+    y, cls = net(x)
+    print(y.shape, cls.shape)

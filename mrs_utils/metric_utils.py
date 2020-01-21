@@ -78,6 +78,20 @@ class CrossEntropyLoss(LossClass):
         return self.criterion(pred, lbl)
 
 
+class BCEWithLogitLoss(LossClass):
+    """
+    Cross entropy loss function used in training
+    """
+    def __init__(self, device, class_weights=(1., 1.)):
+        super(BCEWithLogitLoss, self).__init__()
+        self.name = 'bcelogits'
+        class_weights = torch.tensor([float(a) for a in class_weights]).to(device)
+        self.criterion = nn.BCEWithLogitsLoss(pos_weight=class_weights)
+
+    def forward(self, pred, lbl):
+        return self.criterion(pred, lbl)
+
+
 class SoftIoULoss(LossClass):
     """
     Soft IoU loss that is differentiable
