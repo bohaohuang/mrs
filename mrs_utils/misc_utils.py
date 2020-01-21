@@ -3,6 +3,7 @@ import os
 import time
 import json
 import pickle
+import collections.abc
 from functools import wraps
 
 # Libs
@@ -297,6 +298,21 @@ def get_default_colors():
     return colors
 
 
+def recursive_update(d, u):
+    """
+    Recursively update nested dictionary d with u
+    :param d: the dictionary to be updated
+    :param u: the new dictionary
+    :return:
+    """
+    for k, v in u.items():
+        if isinstance(v, collections.abc.Mapping):
+            d[k] = recursive_update(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
+
+
 def parse_args(arg_list):
     """
     Parse the arguments in a recursive way
@@ -321,7 +337,8 @@ def parse_args(arg_list):
 
     arg_dict = {}
     while len(arg_list) > 0:
-        arg_dict.update(parse_args_helper(arg_list))
+        item = parse_args_helper(arg_list)
+        recursive_update(arg_dict, item)
     return arg_dict
 
 
@@ -332,12 +349,7 @@ def update_flags(flags, cf_dict):
     :param cf_dict: dictionary of configurations, this is from command line
     :return:
     """
-    for k, v in cf_dict.items():
-        if k in flags:
-            if not isinstance(v, dict):
-                flags[k] = v
-            else:
-                update_flags(flags[k], v)
+    recursive_update(flags, cf_dict)
     return historical_update_flag(flags, cf_dict)
 
 
