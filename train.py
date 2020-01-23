@@ -67,7 +67,7 @@ def train_model(args, device, parallel):
     criterions = network_io.create_loss(args, device=device)
     if args['optimizer']['aux_loss']:
         from mrs_utils import metric_utils
-        cls_criterion = metric_utils.BCEWithLogitLoss(device, args['trainer']['class_weight'])
+        cls_criterion = metric_utils.BCEWithLogitLoss(device, eval(args['trainer']['class_weight']))
     scheduler = optim.lr_scheduler.MultiStepLR(optm, milestones=eval(args['optimizer']['decay_step']),
                                                gamma=args['optimizer']['decay_rate'])
 
@@ -117,11 +117,11 @@ def train_model(args, device, parallel):
 
             if args['optimizer']['aux_loss']:
                 loss_dict = model.step_aux(train_val_loaders[phase], device, optm, phase, criterions, cls_criterion,
-                                           args['optimizer']['aux_loss_weight'], args['trainer']['bp_loss_idx'], True,
-                                           mean, std, loss_weights=eval(args['trainer']['loss_weights']))
+                                           args['optimizer']['aux_loss_weight'], eval(args['trainer']['bp_loss_idx']),
+                                           True, mean, std, loss_weights=eval(args['trainer']['loss_weights']))
             else:
                 loss_dict = model.step(train_val_loaders[phase], device, optm, phase, criterions,
-                                       args['trainer']['bp_loss_idx'], True, mean, std,
+                                       eval(args['trainer']['bp_loss_idx']), True, mean, std,
                                        loss_weights=eval(args['trainer']['loss_weights']))
             network_utils.write_and_print(writer, phase, epoch, args['trainer']['epochs'], loss_dict, start_time)
 

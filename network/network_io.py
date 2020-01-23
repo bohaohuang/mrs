@@ -65,7 +65,7 @@ def create_loss(args, **kwargs):
     criterions = []
     for c_name in misc_utils.stem_string(args['trainer']['criterion_name']).split(','):
         if c_name == 'xent':
-            criterions.append(metric_utils.CrossEntropyLoss(args['trainer']['class_weight']))
+            criterions.append(metric_utils.CrossEntropyLoss(eval(args['trainer']['class_weight'])))
         elif c_name == 'iou':
             # this metric is non-differentiable
             criterions.append(metric_utils.IoU())

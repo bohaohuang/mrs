@@ -234,7 +234,7 @@ def make_criterion_str(cfg):
     :return:
     """
     criterion = cfg['trainer']['criterion_name'].split(',')
-    bp_idx = [int(a) for a in cfg['trainer']['bp_loss_idx']]
+    bp_idx = [int(a) for a in eval(cfg['trainer']['bp_loss_idx'])]
     bp_criterion = [criterion[a] for a in bp_idx]
     try:
         loss_weights = [misc_utils.float2str(float(a)) for a in eval(cfg['trainer']['loss_weights'])]
