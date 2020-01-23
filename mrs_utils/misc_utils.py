@@ -383,6 +383,8 @@ def historical_process_flag(flags):
         flags['trainer']['class_weight'] = '({})'.format(','.join(['1' for _ in range(flags['dataset']['class_num'])]))
     if 'loss_weights' not in flags['trainer']:
         flags['trainer']['loss_weights'] = 'None'
+    if isinstance(flags['trainer']['bp_loss_idx'], str) and len(flags['trainer']['bp_loss_idx']) == 1:
+        flags['trainer']['bp_loss_idx'] = '({},)'.format(flags['trainer']['bp_loss_idx'])
     if isinstance(flags['trainer']['bp_loss_idx'], int):
         flags['trainer']['bp_loss_idx'] = '({},)'.format(flags['trainer']['bp_loss_idx'])
     if isinstance(flags['trainer']['loss_weights'], int):
