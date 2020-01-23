@@ -380,13 +380,11 @@ def historical_process_flag(flags):
         if 'aux_loss_weight' not in flags['optimizer']:
             flags['optimizer']['aux_loss_weight'] = 0.4
     if 'class_weight' not in flags['trainer']:
-        flags['trainer']['class_weight'] = '(1, 1)'
+        flags['trainer']['class_weight'] = '({})'.format(','.join(['1' for _ in range(flags['dataset']['class_num'])]))
     if 'loss_weights' not in flags['trainer']:
         flags['trainer']['loss_weights'] = 'None'
-    if isinstance(flags['trainer']['bp_loss_idx'], str):
-        flags['trainer']['bp_loss_idx'] = flags['trainer']['bp_loss_idx']
     if isinstance(flags['trainer']['bp_loss_idx'], int):
-        flags['trainer']['bp_loss_idx'] = (flags['trainer']['bp_loss_idx'],)
+        flags['trainer']['bp_loss_idx'] = '({},)'.format(flags['trainer']['bp_loss_idx'])
     if isinstance(flags['trainer']['loss_weights'], int):
         flags['trainer']['loss_weights'] = (flags['trainer']['loss_weights'],)
     return flags

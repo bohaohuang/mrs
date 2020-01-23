@@ -127,7 +127,7 @@ class SoftIoULoss(LossClass):
         return (1 - dice_loss)
 
 
-class IoU(LossClass):
+'''class IoU(LossClass):
     """
     IoU metric that is not differentiable in training
     """
@@ -144,6 +144,50 @@ class IoU(LossClass):
         pred = pred.flatten().float()
         intersect = truth * pred
         return torch.sum(intersect == 1), torch.sum(truth + pred >= 1)
+
+    def update(self, loss, size):
+        self.numerator += loss[0].item() * size
+        self.denominator += loss[1].item() * size
+
+    def reset(self):
+        self.numerator = 0
+        self.denominator = 0
+
+    def get_loss(self):
+        return self.numerator / (self.denominator + self.delta)'''
+
+
+class IoU(LossClass):
+    """
+    IoU metric that is not differentiable in training
+    """
+    def __init__(self, delta=1e-7):
+        super(IoU, self).__init__()
+        self.name = 'IoU'
+        self.numerator = 0
+        self.denominator = 0
+        self.delta = delta
+
+    def forward(self, pred, lbl):
+        class_n = list(pred.shape)[1]
+        if class_n == 2:
+            truth = lbl.flatten().float()
+            _, pred = torch.max(pred[:, :, :, :], 1)
+            pred = pred.flatten().float()
+            intersect = truth * pred
+            return torch.sum(intersect == 1), torch.sum(truth + pred >= 1)
+        else:
+            # multi-label class, code comes from https://github.com/keras-team/keras/issues/11350
+            truth = lbl.flatten().float()
+            _, pred = torch.max(pred[:, :, :, :], 1)
+            pred = pred.flatten().float()
+            intersect, union = 0, 0
+            for i in range(class_n):
+                true_labels = torch.eq(truth, i)
+                pred_labels = torch.eq(pred, i)
+                intersect += torch.sum(true_labels * pred_labels == 1)
+                union += torch.sum(true_labels + pred_labels >= 1)
+            return intersect, union
 
     def update(self, loss, size):
         self.numerator += loss[0].item() * size
