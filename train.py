@@ -23,7 +23,7 @@ from data import data_loader
 from mrs_utils import misc_utils
 from network import network_utils, network_io
 
-CONFIG_FILE = 'config.json'
+CONFIG_FILE = 'temp_config.json'
 
 
 def read_config():

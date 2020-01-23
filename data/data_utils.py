@@ -286,6 +286,7 @@ def patches_to_hdf5(data_dir, save_dir, patch_size=None):
 
 
 if __name__ == '__main__':
-    # create_toy_set(r'/hdd/mrs/inria/ps512_pd0_ol0', move_dir='/hdd/mrs/inria/toyset')
-    patches_to_hdf5(r'/hdd/mrs/deepglobe/14p_pd0_ol0',
-                    r'/hdd/mrs/deepglobe/14p_pd0_ol0_hdf5')
+    create_toy_set(r'/hdd/mrs/deepglobeland/ps512_pd0_ol0', move_dir='/hdd/mrs/deepglobeland/toyset',
+                   n_train=0.1, n_valid=0.05)
+    # patches_to_hdf5(r'/hdd/mrs/deepglobe/14p_pd0_ol0',
+    #                 r'/hdd/mrs/deepglobe/14p_pd0_ol0_hdf5')
