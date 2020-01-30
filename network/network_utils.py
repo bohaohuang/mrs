@@ -73,7 +73,7 @@ def network_summary(network, input_size, **kwargs):
     summary(net, input_size, device='cpu')
 
 
-def load_epoch(save_dir, resume_epoch, model, optm):
+def load_epoch(save_dir, resume_epoch, model, optm, device):
     """
     Load model from a snapshot, this function can be used to resume training
     :param save_dir: directory that saved the model
@@ -89,6 +89,12 @@ def load_epoch(save_dir, resume_epoch, model, optm):
         os.path.join(save_dir, 'epoch-' + str(resume_epoch - 1) + '.pth.tar')))
     model.load_state_dict(checkpoint['state_dict'])
     optm.load_state_dict(checkpoint['opt_dict'])
+    # individually transfer the optimizer parts, this part comes from
+    # https://discuss.pytorch.org/t/loading-a-saved-model-for-continue-training/17244/4
+    for state in optm.state.values():
+        for k, v in state.items():
+            if isinstance(v, torch.Tensor):
+                state[k] = v.to(device)
 
 
 def sequential_load(target, source_state):

@@ -80,7 +80,7 @@ def train_model(args, device, parallel):
     else:
         print('Resume training decoder {} with encoder {} from epoch {} ...'.format(
             args['decoder_name'], args['encoder_name'], args['trainer']['resume_epoch']))
-        network_utils.load_epoch(args['save_dir'], args['trainer']['resume_epoch'], model, optm)
+        network_utils.load_epoch(args['save_dir'], args['trainer']['resume_epoch'], model, optm, device)
 
     # prepare training
     print('Total params: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1000000.0))
