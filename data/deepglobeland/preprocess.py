@@ -19,6 +19,7 @@ from mrs_utils import misc_utils
 # Settings
 MEAN = (0.40851371, 0.37964116, 0.28266888)
 STD = (0.12667853, 0.10076384, 0.08919973)
+CLASS_NAMES = ['Urbanland', 'Agricultureland', 'Rangeland', 'Forestland', 'Water', 'Barrenland', 'Unknown']
 
 # Decoder
 DECODER = {
