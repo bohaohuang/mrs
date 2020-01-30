@@ -21,6 +21,10 @@ MEAN = (0.40994515, 0.38314009, 0.28864455)
 STD = (0.12889884, 0.10563929, 0.09726452)
 
 
+def decode_map(gt_map):
+    return gt_map[:, :, 0]
+
+
 def patch_tile(rgb_file, gt_file, patch_size, pad, overlap):
     """
     Extract the given rgb and gt tiles into patches
@@ -102,7 +106,7 @@ def get_images(data_dir, valid_percent=0.14):
 
 
 if __name__ == '__main__':
-    ps = 512
+    ps = 1024
     pd = 0
     ol = 0
     save_dir = os.path.join(r'/hdd/mrs/deepgloberoad', 'ps{}_pd{}_ol{}'.format(ps, pd, ol))

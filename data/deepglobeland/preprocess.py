@@ -31,12 +31,27 @@ DECODER = {
     0: 6                # Unknown
 }
 
+ENCODER = {
+    0: (0, 255, 255),           # Urban land
+    1: (255, 255, 0),           # Agriculture land
+    2: (255, 0, 255),           # Rangeland
+    3: (0, 255, 0),             # Forest land
+    4: (0, 0, 255),             # Water
+    5: (255, 255, 255),         # Barren land
+    6: (0, 0, 0)                # Unknown
+}
 
-def decode_map(gt_map, decoder):
+
+def decode_map(gt_map, decoder=DECODER):
     dc_func = lambda x: decoder[x]
     gt_map = gt_map.astype(np.float)
     new_map = gt_map[:, :, 0] * 1000000 + gt_map[:, :, 1] * 1000 + gt_map[:, :, 2]
     return np.vectorize(dc_func)(new_map.astype(np.long))
+
+
+def encode_map(gt, encoder=ENCODER):
+    dc_func = lambda x: encoder[x]
+    return np.stack(np.vectorize(dc_func)(gt.astype(np.long)), axis=-1)
 
 
 def patch_tile(rgb_file, gt_file, patch_size, pad, overlap):

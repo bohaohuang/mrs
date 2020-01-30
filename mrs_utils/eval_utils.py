@@ -295,21 +295,36 @@ class Evaluator:
             self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
             assert len(self.rgb_files) == len(self.lbl_files)
             self.truth_val = 255
+            self.decode_func = None
+            self.encode_func = None
         elif ds_name == 'deepglobe':
             from data.deepglobe import preprocess
             self.rgb_files, self.lbl_files = preprocess.get_images(data_dir)
             assert len(self.rgb_files) == len(self.lbl_files)
             self.truth_val = 1
+            self.decode_func = None
+            self.encode_func = lambda x: x * 255
         elif ds_name == 'deepgloberoad':
             from data.deepgloberoad import preprocess
             self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
             assert len(self.rgb_files) == len(self.lbl_files)
             self.truth_val = 255
+            self.decode_func = preprocess.decode_map
+            self.encode_func = None
+        elif ds_name == 'deepglobeland':
+            from data.deepglobeland import preprocess
+            self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
+            assert len(self.rgb_files) == len(self.lbl_files)
+            self.truth_val = 1
+            self.decode_func = preprocess.decode_map
+            self.encode_func = preprocess.encode_map
         elif ds_name == 'mnih':
             from data.mnih import preprocess
             self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
             assert len(self.rgb_files) == len(self.lbl_files)
             self.truth_val = 255
+            self.decode_func = None
+            self.encode_func = None
         elif load_func:
             self.truth_val = kwargs.pop('truth_val', 1)
             self.rgb_files, self.lbl_files = load_func(data_dir, **kwargs)
@@ -317,7 +332,8 @@ class Evaluator:
         else:
             raise NotImplementedError('Dataset {} is not supported')
 
-    def evaluate(self, model, patch_size, overlap, pred_dir=None, report_dir=None, save_conf=False, delta=1e-6):
+    def evaluate(self, model, patch_size, overlap, pred_dir=None, report_dir=None, save_conf=False, delta=1e-6,
+                 eval_class=(1, ), visualize=False):
         iou_a, iou_b = 0, 0
         report = []
         if pred_dir:
@@ -328,11 +344,8 @@ class Evaluator:
             # read data
             rgb = misc_utils.load_file(rgb_file)[:, :, :3]
             lbl = misc_utils.load_file(lbl_file)
-            # if label has multiple channels, only keep the first channel, this is not elegant but it is useful to deal
-            # with deepglobe road
-            # TODO make this an option when selecting dataset
-            if len(lbl.shape) == 3:
-                lbl = lbl[:, :, 0]
+            if self.decode_func:
+                lbl = self.decode_func(lbl)
 
             # evaluate on tiles
             tile_dim = rgb.shape[:2]
@@ -358,13 +371,22 @@ class Evaluator:
             if save_conf:
                 misc_utils.save_file(os.path.join(pred_dir, '{}.npy'.format(file_name)), tile_preds[:, :, 1])
             tile_preds = np.argmax(tile_preds, -1)
-            a, b = metric_utils.iou_metric(lbl/self.truth_val, tile_preds)
+            a, b = metric_utils.iou_metric(lbl/self.truth_val, tile_preds, eval_class=eval_class)
             print('{}: IoU={:.2f}'.format(file_name, a/(b+delta)*100))
             report.append('{},{},{},{}\n'.format(file_name, a, b, a/(b+delta)*100))
             iou_a += a
             iou_b += b
+            if visualize:
+                if self.encode_func:
+                    vis_utils.compare_figures([rgb, self.encode_func(lbl), self.encode_func(tile_preds)], (1, 3),
+                                              fig_size=(15, 5))
+                else:
+                    vis_utils.compare_figures([rgb, lbl, tile_preds], (1, 3), fig_size=(15, 5))
             if pred_dir:
-                misc_utils.save_file(os.path.join(pred_dir, '{}.png'.format(file_name)), tile_preds*self.truth_val)
+                if self.encode_func:
+                    misc_utils.save_file(os.path.join(pred_dir, '{}.png'.format(file_name)), self.encode_func(tile_preds))
+                else:
+                    misc_utils.save_file(os.path.join(pred_dir, '{}.png'.format(file_name)), tile_preds)
         print('Overall: IoU={:.2f}'.format(iou_a/iou_b*100))
         report.append('Overall,{},{},{}\n'.format(iou_a, iou_b, iou_a/iou_b*100))
         if report_dir:

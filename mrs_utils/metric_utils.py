@@ -347,21 +347,26 @@ class LovaszSoftmax(LossClass):
         return jaccard
 
 
-def iou_metric(truth, pred, divide=False):
+def iou_metric(truth, pred, divide=False, eval_class=(1,)):
     """
     Compute IoU, i.e., jaccard index
     :param truth: truth data matrix, should be H*W
     :param pred: prediction data matrix, should be the same dimension as the truth data matrix
     :param divide: if True, will return the IoU, otherwise return the numerator and denominator
+    :param eval_class: the label class to be evaluated
+    :param class_wise: if True, class-wise IoU will be reported
     :return:
     """
     truth = truth.flatten()
     pred = pred.flatten()
-    intersect = truth*pred
+    intersect, union = 0, 0
+    for c_cnt, curr_class in enumerate(eval_class):
+        intersect += np.sum(((truth == curr_class) * (pred == curr_class)) == 1)
+        union += np.sum(((truth == curr_class) + (pred == curr_class)) >= 1)
     if not divide:
-        return float(np.sum(intersect == 1)), float(np.sum(truth+pred >= 1))
+        return float(intersect), float(union)
     else:
-        return float(np.sum(intersect == 1) / np.sum(truth+pred >= 1))
+        return float(intersect) / float(union)
 
 
 if __name__ == '__main__':
