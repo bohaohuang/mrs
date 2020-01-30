@@ -297,6 +297,7 @@ class Evaluator:
             self.truth_val = 255
             self.decode_func = None
             self.encode_func = None
+            self.class_names = ['building', ]
         elif ds_name == 'deepglobe':
             from data.deepglobe import preprocess
             self.rgb_files, self.lbl_files = preprocess.get_images(data_dir)
@@ -304,6 +305,7 @@ class Evaluator:
             self.truth_val = 1
             self.decode_func = None
             self.encode_func = lambda x: x * 255
+            self.class_names = ['building', ]
         elif ds_name == 'deepgloberoad':
             from data.deepgloberoad import preprocess
             self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
@@ -311,6 +313,7 @@ class Evaluator:
             self.truth_val = 255
             self.decode_func = preprocess.decode_map
             self.encode_func = None
+            self.class_names = ['road', ]
         elif ds_name == 'deepglobeland':
             from data.deepglobeland import preprocess
             self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
@@ -318,6 +321,7 @@ class Evaluator:
             self.truth_val = 1
             self.decode_func = preprocess.decode_map
             self.encode_func = preprocess.encode_map
+            self.class_names = preprocess.CLASS_NAMES[:6]
         elif ds_name == 'mnih':
             from data.mnih import preprocess
             self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
@@ -325,6 +329,7 @@ class Evaluator:
             self.truth_val = 255
             self.decode_func = None
             self.encode_func = None
+            self.class_names = ['road', ]
         elif load_func:
             self.truth_val = kwargs.pop('truth_val', 1)
             self.rgb_files, self.lbl_files = load_func(data_dir, **kwargs)
@@ -332,9 +337,20 @@ class Evaluator:
         else:
             raise NotImplementedError('Dataset {} is not supported')
 
+    def get_result_strings(self, file_name, iou_score, delta=1e-6):
+        print_string = '{}: IoU={:05.2f}\n\t'.format(file_name, np.mean(iou_score[0, :] / (iou_score[1, :] + delta) * 100))
+        for c_cnt, class_name in enumerate(self.class_names):
+            print_string += ' {}: IoU={:05.2f}'.format(class_name, iou_score[0, c_cnt] / (iou_score[1, c_cnt] + delta) * 100)
+        report_string = '{},{},{}'.format(file_name, np.sum(iou_score[0, :]), np.sum(iou_score[1, :]))
+        if len(self.class_names) > 1:
+            for c_cnt, class_name in enumerate(self.class_names):
+                report_string += ',{},{}'.format(iou_score[0, c_cnt], iou_score[1, c_cnt])
+        report_string += ',{}\n'.format(np.mean(iou_score[0, :] / (iou_score[1, :] + delta) * 100))
+        return print_string, report_string
+
     def evaluate(self, model, patch_size, overlap, pred_dir=None, report_dir=None, save_conf=False, delta=1e-6,
                  eval_class=(1, ), visualize=False):
-        iou_a, iou_b = 0, 0
+        iou_a, iou_b = np.zeros(len(eval_class)), np.zeros(len(eval_class))
         report = []
         if pred_dir:
             misc_utils.make_dir_if_not_exist(pred_dir)
@@ -371,11 +387,12 @@ class Evaluator:
             if save_conf:
                 misc_utils.save_file(os.path.join(pred_dir, '{}.npy'.format(file_name)), tile_preds[:, :, 1])
             tile_preds = np.argmax(tile_preds, -1)
-            a, b = metric_utils.iou_metric(lbl/self.truth_val, tile_preds, eval_class=eval_class)
-            print('{}: IoU={:.2f}'.format(file_name, a/(b+delta)*100))
-            report.append('{},{},{},{}\n'.format(file_name, a, b, a/(b+delta)*100))
-            iou_a += a
-            iou_b += b
+            iou_score = metric_utils.iou_metric(lbl/self.truth_val, tile_preds, eval_class=eval_class)
+            pstr, rstr = self.get_result_strings(file_name, iou_score, delta)
+            print(pstr)
+            report.append(rstr)
+            iou_a += iou_score[0, :]
+            iou_b += iou_score[1, :]
             if visualize:
                 if self.encode_func:
                     vis_utils.compare_figures([rgb, self.encode_func(lbl), self.encode_func(tile_preds)], (1, 3),
@@ -387,12 +404,13 @@ class Evaluator:
                     misc_utils.save_file(os.path.join(pred_dir, '{}.png'.format(file_name)), self.encode_func(tile_preds))
                 else:
                     misc_utils.save_file(os.path.join(pred_dir, '{}.png'.format(file_name)), tile_preds)
-        print('Overall: IoU={:.2f}'.format(iou_a/iou_b*100))
-        report.append('Overall,{},{},{}\n'.format(iou_a, iou_b, iou_a/iou_b*100))
+        pstr, rstr = self.get_result_strings('Overall', np.stack([iou_a, iou_b], axis=0), delta)
+        print(pstr)
+        report.append(rstr)
         if report_dir:
             misc_utils.make_dir_if_not_exist(report_dir)
             misc_utils.save_file(os.path.join(report_dir, 'result.txt'), report)
-        return iou_a/iou_b*100
+        return np.mean(iou_a / (iou_b + delta))*100
 
 
 if __name__ == '__main__':
