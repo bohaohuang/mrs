@@ -130,13 +130,41 @@ def get_images(data_dir, valid_percent=0.14):
     return rgb_files, gt_files
 
 
+def get_test_images(data_dir, set_name='land_valid_sat'):
+    from glob import glob
+    from natsort import natsorted
+    img_files = natsorted(glob(os.path.join(data_dir, set_name, '*.jpg')))
+    return img_files, img_files  # hacky way to get rid of length check in eval_utils
+
+
+def get_class_distribution(img_dir):
+    dirs = ['land-train/land-train', ]
+    gt_imgs = []
+    cnt = np.zeros(7)
+    for dir_ in dirs:
+        gt_imgs.extend([a[1] for a in data_utils.get_img_lbl(os.path.join(img_dir, dir_), 'sat.jpg', 'mask.png')])
+    for gt_img in tqdm(gt_imgs):
+        gt = misc_utils.load_file(gt_img)
+        gt = decode_map(gt)
+        hist, _ = np.histogram(gt, bins=np.arange(8))
+        cnt += hist
+    return cnt
+
+
 if __name__ == '__main__':
     ps = 512
     pd = 0
     ol = 0
     save_dir = os.path.join(r'/hdd/mrs/deepglobeland', 'ps{}_pd{}_ol{}'.format(ps, pd, ol))
-    patch_deepglobeland(data_dir=r'/media/ei-edl01/data/remote_sensing_data/DGLand',
-                        save_dir=save_dir,
-                        patch_size=(ps, ps),
-                        pad=pd, overlap=ol)
-    get_stats(r'/media/ei-edl01/data/remote_sensing_data/DGLand')
+    # patch_deepglobeland(data_dir=r'/media/ei-edl01/data/remote_sensing_data/DGLand',
+    #                     save_dir=save_dir,
+    #                     patch_size=(ps, ps),
+    #                     pad=pd, overlap=ol)
+    # get_stats(r'/media/ei-edl01/data/remote_sensing_data/DGLand')
+    cnt = get_class_distribution(r'/media/ei-edl01/data/remote_sensing_data/DGLand')
+    import matplotlib.pyplot as plt
+    plt.pie(cnt, labels=CLASS_NAMES, autopct='%1.1f%%', shadow=True, startangle=90, explode=(0, 0, 0.1, 0, 0, 0.1, 0),
+            colors=ENCODER.values())
+    plt.axis('equal')
+    plt.tight_layout()
+    plt.show()

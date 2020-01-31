@@ -34,7 +34,11 @@ class Base(nn.Module):
         raise NotImplementedError
 
     def inference(self, *inputs_):
-        return self.forward(*inputs_)
+        outputs = self.forward(*inputs_)
+        if isinstance(outputs, tuple):
+            return outputs[0]
+        else:
+            return outputs
 
     def init_weight(self):
         """

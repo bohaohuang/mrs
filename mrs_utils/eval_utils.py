@@ -286,7 +286,7 @@ def get_precision_recall(conf, true):
 
 
 class Evaluator:
-    def __init__(self, ds_name, data_dir, tsfm, device, load_func=None, **kwargs):
+    def __init__(self, ds_name, data_dir, tsfm, device, load_func=None, infer=False, **kwargs):
         ds_name = misc_utils.stem_string(ds_name)
         self.tsfm = tsfm
         self.device = device
@@ -316,7 +316,10 @@ class Evaluator:
             self.class_names = ['road', ]
         elif ds_name == 'deepglobeland':
             from data.deepglobeland import preprocess
-            self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
+            if not infer:
+                self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
+            else:
+                self.rgb_files, self.lbl_files = preprocess.get_test_images(data_dir, **kwargs)
             assert len(self.rgb_files) == len(self.lbl_files)
             self.truth_val = 1
             self.decode_func = preprocess.decode_map
@@ -334,6 +337,9 @@ class Evaluator:
             self.truth_val = kwargs.pop('truth_val', 1)
             self.rgb_files, self.lbl_files = load_func(data_dir, **kwargs)
             assert len(self.rgb_files) == len(self.lbl_files)
+            self.decode_func = kwargs.pop('decode_func', None)
+            self.encode_func = kwargs.pop('encode_func', None)
+            self.class_names = kwargs.pop('class_names', ['building', ])
         else:
             raise NotImplementedError('Dataset {} is not supported')
 
@@ -373,7 +379,7 @@ class Evaluator:
                     tsfm_image = tsfm(image=patch)
                     patch = tsfm_image['image']
                 patch = torch.unsqueeze(patch, 0).to(self.device)
-                pred = F.softmax(model.forward(patch), 1).detach().cpu().numpy()
+                pred = F.softmax(model.inference(patch), 1).detach().cpu().numpy()
                 tile_preds.append(data_utils.change_channel_order(pred, True)[0, :, :, :])
             # stitch back to tiles
             tile_preds = patch_extractor.unpatch_block(
@@ -411,6 +417,42 @@ class Evaluator:
             misc_utils.make_dir_if_not_exist(report_dir)
             misc_utils.save_file(os.path.join(report_dir, 'result.txt'), report)
         return np.mean(iou_a / (iou_b + delta))*100
+
+    def infer(self, model, pred_dir, patch_size, overlap, ext='_mask'):
+        misc_utils.make_dir_if_not_exist(pred_dir)
+        pbar = tqdm(self.rgb_files)
+        for rgb_file in pbar:
+            file_name = os.path.splitext(os.path.basename(rgb_file))[0].split('_')[0]
+            pbar.set_description('Inferring {}'.format(file_name))
+            # read data
+            rgb = misc_utils.load_file(rgb_file)[:, :, :3]
+
+            # evaluate on tiles
+            tile_dim = rgb.shape[:2]
+            tile_dim_pad = [tile_dim[0] + 2 * model.lbl_margin, tile_dim[1] + 2 * model.lbl_margin]
+            grid_list = patch_extractor.make_grid(tile_dim_pad, patch_size, overlap)
+            tile_preds = []
+            for patch in patch_extractor.patch_block(rgb, model.lbl_margin, grid_list, patch_size, False):
+                for tsfm in self.tsfm:
+                    tsfm_image = tsfm(image=patch)
+                    patch = tsfm_image['image']
+                patch = torch.unsqueeze(patch, 0).to(self.device)
+                pred = F.softmax(model.inference(patch), 1).detach().cpu().numpy()
+                tile_preds.append(data_utils.change_channel_order(pred, True)[0, :, :, :])
+            # stitch back to tiles
+            tile_preds = patch_extractor.unpatch_block(
+                np.array(tile_preds),
+                tile_dim_pad,
+                patch_size,
+                tile_dim,
+                [patch_size[0] - 2 * model.lbl_margin, patch_size[1] - 2 * model.lbl_margin],
+                overlap=2 * model.lbl_margin
+            )
+            tile_preds = np.argmax(tile_preds, -1)
+            if self.encode_func:
+                misc_utils.save_file(os.path.join(pred_dir, '{}{}.png'.format(file_name, ext)), self.encode_func(tile_preds))
+            else:
+                misc_utils.save_file(os.path.join(pred_dir, '{}{}.png'.format(file_name, ext)), tile_preds)
 
 
 if __name__ == '__main__':

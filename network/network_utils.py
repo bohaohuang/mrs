@@ -260,7 +260,7 @@ def unique_model_name(cfg):
     decay_str = '_'.join(str(ds) for ds in eval(cfg['optimizer']['decay_step']))
     dr_str = str(cfg['optimizer']['decay_rate']).replace('.', 'p')
     if cfg['optimizer']['aux_loss']:
-        aux_str = '_aux'
+        aux_str = '_aux{}'.format(misc_utils.float2str(cfg['optimizer']['aux_loss_weight']))
     else:
         aux_str = ''
     return 'ec{}_dc{}_ds{}_lre{:.0e}_lrd{:.0e}_ep{}_bs{}_ds{}_dr{}_cr{}{}'.format(
