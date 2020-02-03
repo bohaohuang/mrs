@@ -164,7 +164,8 @@ if __name__ == '__main__':
     cnt = get_class_distribution(r'/media/ei-edl01/data/remote_sensing_data/DGLand')
     import matplotlib.pyplot as plt
     plt.pie(cnt, labels=CLASS_NAMES, autopct='%1.1f%%', shadow=True, startangle=90, explode=(0, 0, 0.1, 0, 0, 0.1, 0),
-            colors=ENCODER.values())
+            # colors=misc_utils.normalize_rgb(list(ENCODER.values())))
+            colors=((0, 1, 1), (1, 1, 0), (1, 0, 1), (0, 1, 0), (0, 0, 1), (0.9, 0.9, 0.9), (0, 0, 0)))
     plt.axis('equal')
     plt.tight_layout()
     plt.show()

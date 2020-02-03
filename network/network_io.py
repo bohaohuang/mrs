@@ -110,9 +110,12 @@ def create_tsfm(args, mean, std):
     input_size = eval(args['dataset']['input_size'])
     crop_size = eval(args['dataset']['crop_size'])
     tsfms = [A.Flip(), A.RandomRotate90(), A.Normalize(mean=mean, std=std), ToTensorV2()]
-    if input_size[0] != crop_size[0] or input_size[1] != crop_size[1]:
+    if input_size[0] > crop_size[0] and input_size[1] > crop_size[1]:
         tsfm_train = A.Compose([A.RandomCrop(*crop_size)] + tsfms)
         tsfm_valid = A.Compose([A.RandomCrop(*crop_size)] + tsfms[2:])
+    elif input_size[0] < crop_size[0] or input_size[1] < crop_size[1]:
+        tsfm_train = A.Compose([A.RandomResizedCrop(*crop_size)] + tsfms)
+        tsfm_valid = A.Compose([A.RandomResizedCrop(*crop_size)] + tsfms[2:])
     else:
         tsfm_train = A.Compose(tsfms)
         tsfm_valid = A.Compose(tsfms[-2:])

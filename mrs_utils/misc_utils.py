@@ -245,6 +245,23 @@ def set_random_seed(seed_):
     np.random.seed(seed_)
 
 
+def normalize_rgb(rgb):
+    """
+    Normalize rgb to 0~1 range
+    :param rgb: the rgb values to be normalized, could be a tuple or list of tuples
+    :return:
+    """
+    if isinstance(rgb, tuple):
+        return tuple([float(a)/255 for a in rgb])
+    elif isinstance(rgb, list):
+        norm_rgb = []
+        for item in rgb:
+            norm_rgb.append(normalize_rgb(item))
+        return norm_rgb
+    else:
+        raise NotImplementedError('Data type: {} not understood'.format(type(rgb)))
+
+
 def args_getter(inspect_class):
     """
     Inspect parameters inside a class
