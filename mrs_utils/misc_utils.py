@@ -106,7 +106,7 @@ def load_file(file_name, **kwargs):
                 data = Image.open(file_name)
         else:
             try:
-                data = io.imread(file_name)
+                data = np.array(Image.open(file_name).convert('RGB'))[:, :, :3]
             except Image.DecompressionBombError:
                 Image.MAX_IMAGE_PIXELS = None
                 data = io.imread(file_name)

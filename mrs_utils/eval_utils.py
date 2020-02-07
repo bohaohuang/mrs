@@ -8,6 +8,7 @@ import os
 import re
 
 # Libs
+import skimage.transform
 import numpy as np
 from tqdm import tqdm
 from skimage import measure
@@ -286,10 +287,14 @@ def get_precision_recall(conf, true):
 
 
 class Evaluator:
-    def __init__(self, ds_name, data_dir, tsfm, device, load_func=None, infer=False, **kwargs):
+    def __init__(self, ds_name, data_dir, tsfm, device, load_func=None, infer=False, ensembler=None, **kwargs):
         ds_name = misc_utils.stem_string(ds_name)
         self.tsfm = tsfm
         self.device = device
+        if ensembler is None:
+            self.ensembler = BaseEnsemble()
+        else:
+            self.ensembler = ensembler
         if ds_name == 'inria':
             from data.inria import preprocess
             self.rgb_files, self.lbl_files = preprocess.get_images(data_dir, **kwargs)
@@ -375,12 +380,15 @@ class Evaluator:
             grid_list = patch_extractor.make_grid(tile_dim_pad, patch_size, overlap)
             tile_preds = []
             for patch in patch_extractor.patch_block(rgb, model.lbl_margin, grid_list, patch_size, False):
-                for tsfm in self.tsfm:
-                    tsfm_image = tsfm(image=patch)
-                    patch = tsfm_image['image']
-                patch = torch.unsqueeze(patch, 0).to(self.device)
-                pred = F.softmax(model.inference(patch), 1).detach().cpu().numpy()
-                tile_preds.append(data_utils.change_channel_order(pred, True)[0, :, :, :])
+                patch_preds = []
+                for aug_patch in self.ensembler.augment_data(patch):
+                    for tsfm in self.tsfm:
+                        tsfm_image = tsfm(image=aug_patch)
+                        aug_patch = tsfm_image['image']
+                    aug_patch = torch.unsqueeze(aug_patch, 0).to(self.device)
+                    pred = F.softmax(model.inference(aug_patch), 1).detach().cpu().numpy()
+                    patch_preds.append(pred)
+                tile_preds.append(data_utils.change_channel_order(self.ensembler.fuse_data(patch_preds), True)[0, :, :, :])
             # stitch back to tiles
             tile_preds = patch_extractor.unpatch_block(
                 np.array(tile_preds),
@@ -418,7 +426,7 @@ class Evaluator:
             misc_utils.save_file(os.path.join(report_dir, 'result.txt'), report)
         return np.mean(iou_a / (iou_b + delta))*100
 
-    def infer(self, model, pred_dir, patch_size, overlap, ext='_mask'):
+    def infer(self, model, pred_dir, patch_size, overlap, ext='_mask', file_ext='png', visualize=False):
         misc_utils.make_dir_if_not_exist(pred_dir)
         pbar = tqdm(self.rgb_files)
         for rgb_file in pbar:
@@ -433,12 +441,15 @@ class Evaluator:
             grid_list = patch_extractor.make_grid(tile_dim_pad, patch_size, overlap)
             tile_preds = []
             for patch in patch_extractor.patch_block(rgb, model.lbl_margin, grid_list, patch_size, False):
-                for tsfm in self.tsfm:
-                    tsfm_image = tsfm(image=patch)
-                    patch = tsfm_image['image']
-                patch = torch.unsqueeze(patch, 0).to(self.device)
-                pred = F.softmax(model.inference(patch), 1).detach().cpu().numpy()
-                tile_preds.append(data_utils.change_channel_order(pred, True)[0, :, :, :])
+                patch_preds = []
+                for aug_patch in self.ensembler.augment_data(patch):
+                    for tsfm in self.tsfm:
+                        tsfm_image = tsfm(image=aug_patch)
+                        aug_patch = tsfm_image['image']
+                    aug_patch = torch.unsqueeze(aug_patch, 0).to(self.device)
+                    pred = F.softmax(model.inference(aug_patch), 1).detach().cpu().numpy()
+                    patch_preds.append(pred)
+                tile_preds.append(data_utils.change_channel_order(self.ensembler.fuse_data(patch_preds), True)[0, :, :, :])
             # stitch back to tiles
             tile_preds = patch_extractor.unpatch_block(
                 np.array(tile_preds),
@@ -450,9 +461,76 @@ class Evaluator:
             )
             tile_preds = np.argmax(tile_preds, -1)
             if self.encode_func:
-                misc_utils.save_file(os.path.join(pred_dir, '{}{}.png'.format(file_name, ext)), self.encode_func(tile_preds))
+                pred_img = self.encode_func(tile_preds)
             else:
-                misc_utils.save_file(os.path.join(pred_dir, '{}{}.png'.format(file_name, ext)), tile_preds)
+                pred_img = tile_preds
+
+            if visualize:
+                vis_utils.compare_figures([rgb, pred_img], (1, 2), fig_size=(12, 5))
+
+            misc_utils.save_file(os.path.join(pred_dir, '{}{}.{}'.format(file_name, ext, file_ext)), pred_img)
+
+
+class BaseEnsemble(object):
+    @staticmethod
+    def augment_data(img):
+        return [img, ]
+
+    @staticmethod
+    def fuse_data(img):
+        return img[0]
+
+
+class MultiResEnsemble(BaseEnsemble):
+    def __init__(self, aug_size, fuse_size=None, rotate=True, use_max=False):
+        self.aug_size = aug_size
+        self.rotate = rotate
+        if self.rotate:
+            self.copy_per_img = 6
+        else:
+            self.copy_per_img = 1
+        if not fuse_size:
+            fuse_size = self.aug_size[-1]
+        self.fuse_size = fuse_size
+        self.use_max = use_max
+
+    def augment_data(self, img):
+        aug_images = []
+        for aug_size in self.aug_size:
+            rgb = skimage.transform.resize(img, (aug_size, aug_size), preserve_range=True).astype(np.uint8)
+            aug_images.append(rgb)
+            if self.rotate:
+                aug_images.append(rgb[::-1, :, :])
+                aug_images.append(rgb[:, ::-1, :])
+                aug_images.append(np.rot90(rgb))
+                aug_images.append(np.rot90(rgb)[::-1, :, :])
+                aug_images.append(np.rot90(rgb)[:, ::-1, :])
+        return aug_images
+
+    def fuse_data(self, imgs):
+        fuse_images = [[] for _ in range(len(self.aug_size))]
+        for cnt, img in enumerate(imgs):
+            rgb = skimage.transform.resize(data_utils.change_channel_order(img[0, :, :, :], to_channel_last=True),
+                                           (self.fuse_size, self.fuse_size))
+            if cnt % self.copy_per_img == 0:
+                fuse_images[cnt // self.copy_per_img].append(rgb)
+            elif cnt % self.copy_per_img == 1:
+                fuse_images[cnt // self.copy_per_img].append(rgb[::-1, :, :])
+            elif cnt % self.copy_per_img == 2:
+                fuse_images[cnt // self.copy_per_img].append(rgb[:, ::-1, :])
+            elif cnt % self.copy_per_img == 3:
+                fuse_images[cnt // self.copy_per_img].append(np.rot90(rgb, k=-1))
+            elif cnt % self.copy_per_img == 4:
+                fuse_images[cnt // self.copy_per_img].append(np.rot90(rgb[::-1, :, :], k=-1))
+            elif cnt % self.copy_per_img == 5:
+                fuse_images[cnt // self.copy_per_img].append(np.rot90(rgb[:, ::-1, :], k=-1))
+        fuse_tps = [np.mean(np.stack(a, axis=0), axis=0) for a in fuse_images]
+
+        if self.use_max:
+            pred = np.max(np.stack(fuse_tps, axis=0), axis=0)
+        else:
+            pred = np.mean(np.stack(fuse_tps, axis=0), axis=0)
+        return np.expand_dims(data_utils.change_channel_order(pred, to_channel_last=False), axis=0)
 
 
 if __name__ == '__main__':
