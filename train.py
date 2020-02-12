@@ -111,7 +111,6 @@ def train_model(args, device, parallel):
             start_time = timeit.default_timer()
             if phase == 'train':
                 model.train()
-                scheduler.step()
             else:
                 model.eval()
 
@@ -125,6 +124,7 @@ def train_model(args, device, parallel):
                                        loss_weights=eval(args['trainer']['loss_weights']))
             network_utils.write_and_print(writer, phase, epoch, args['trainer']['epochs'], loss_dict, start_time)
 
+        scheduler.step()
         # save the model
         if epoch % args['trainer']['save_epoch'] == 0 and epoch != 0:
             save_name = os.path.join(args['save_dir'], 'epoch-{}.pth.tar'.format(epoch))

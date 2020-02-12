@@ -152,8 +152,8 @@ def get_ds_stats(img_files):
 
     for file in tqdm(img_files):
         img = misc_utils.load_file(file).astype(np.float32) / 255
-        ds_mean = ds_mean + np.mean(img, axis=(0, 1))
-        ds_std = ds_std + np.std(img, axis=(0, 1))
+        ds_mean = ds_mean + np.mean(img, axis=(0, 1))[:3]
+        ds_std = ds_std + np.std(img, axis=(0, 1))[:3]
 
     ds_mean = ds_mean / len(img_files)
     ds_std = ds_std / len(img_files)
