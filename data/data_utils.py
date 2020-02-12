@@ -16,7 +16,7 @@ from natsort import natsorted
 from torchvision import transforms
 
 # Own modules
-from mrs_utils import misc_utils
+from mrs_utils import misc_utils, process_block
 
 
 def make_grid(tile_size, patch_size, overlap):
@@ -186,6 +186,21 @@ def patch_tile(rgb_file, gt_file, patch_size, pad, overlap):
         rgb_patch = crop_image(rgb, y, x, patch_size[0], patch_size[1])
         gt_patch = crop_image(gt, y, x, patch_size[0], patch_size[1])
         yield rgb_patch, gt_patch, y, x
+
+
+def get_custom_ds_stats(ds_name, img_dir):
+    def get_stats(img_dir):
+        rgb_imgs = natsorted(glob(os.path.join(img_dir, '*.jpg')))
+        ds_mean, ds_std = get_ds_stats(rgb_imgs)
+        return np.stack([ds_mean, ds_std], axis=0)
+
+    val = process_block.ValueComputeProcess(
+        ds_name, os.path.join(os.path.dirname(__file__), './stats/custom'),
+        os.path.join(os.path.dirname(__file__), './stats/custom/{}.npy'.format(ds_name)), func=get_stats). \
+        run(img_dir=img_dir).val
+    val_test = val
+
+    return val, val_test
 
 
 def create_toy_set(data_dir, train_file='file_list_train.txt', valid_file='file_list_valid.txt',

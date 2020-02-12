@@ -105,12 +105,14 @@ def get_images(data_dir, valid_percent=0.14):
     return rgb_files, gt_files
 
 
-val = process_block.ValueComputeProcess(DS_NAME, os.path.join(os.path.dirname(__file__), '../stats/builtin'),
-                                        os.path.join(os.path.dirname(__file__),
-                                                     '../stats/builtin/{}.npy'.format(DS_NAME)),
-                                        func=get_stats).\
-    run(img_dir=r'/media/ei-edl01/data/remote_sensing_data/DeepGlobeRoad').val
-val_test = val
+def get_stats_pb(img_dir=r'/hdd/mrs/deepglobe/14p_pd0_ol0/patches'):
+    val = process_block.ValueComputeProcess(DS_NAME, os.path.join(os.path.dirname(__file__), '../stats/builtin'),
+                                            os.path.join(os.path.dirname(__file__),
+                                                         '../stats/builtin/{}.npy'.format(DS_NAME)),
+                                            func=get_stats).\
+        run(img_dir=img_dir).val
+    val_test = val
+    return val, val_test
 
 
 if __name__ == '__main__':
