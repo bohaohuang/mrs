@@ -7,6 +7,7 @@
 import os
 
 # Libs
+import numpy as np
 
 # Pytorch
 import albumentations as A
@@ -120,6 +121,32 @@ def create_tsfm(args, mean, std):
         tsfm_train = A.Compose(tsfms)
         tsfm_valid = A.Compose(tsfms[-2:])
     return tsfm_train, tsfm_valid
+
+
+def get_dataset_stats(ds_name, load_func=None, mean_val=([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])):
+    if ds_name == 'inria':
+        from data.inria import preprocess
+        print('Use {} mean std stats'.format(ds_name))
+    elif ds_name == 'deepglobe':
+        from data.deepglobe import preprocess
+        print('Use {} mean std stats'.format(ds_name))
+    elif ds_name == 'deepgloberoad':
+        from data.deepgloberoad import preprocess
+        print('Use {} mean std stats'.format(ds_name))
+    elif ds_name == 'deepglobeland':
+        from data.deepglobeland import preprocess
+        print('Use {} mean std stats'.format(ds_name))
+    elif ds_name == 'mnih':
+        from data.mnih import preprocess
+        print('Use {} mean std stats'.format(ds_name))
+    elif load_func:
+        from mrs_utils import process_block
+        pb = process_block.ValueComputeProcess(ds_name, '../data/stats', '../data/stats/{}.npy', load_func)
+        preprocess = pb.run()
+    else:
+        print('Dataset {} is not supported, use default mean stats instead'.format(ds_name))
+        return np.array(mean_val)
+    return preprocess.val[0, :], preprocess.val[1, :]
 
 
 def load_config(model_dir):
