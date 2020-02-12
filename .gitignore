@@ -3,7 +3,7 @@
 
 # Customize
 tasks
-data/stats/custom
+!data/stats/custom
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
