@@ -16,9 +16,10 @@ from osgeo import gdal
 from natsort import natsorted
 
 # Own modules
-from mrs_utils import misc_utils
+from mrs_utils import misc_utils, process_block
 
 # Settings
+DS_NAME = 'DeepGlobe'
 CITY_DICT = {'Vegas': '2_Vegas', 'Paris': '3_Paris', 'Shanghai': '4_Shanghai', 'Khartoum': '5_Khartoum'}
 MEAN = (0.34391829, 0.41294382, 0.45617783)
 STD = (0.10493991, 0.09446405, 0.08782307)
@@ -139,8 +140,13 @@ def get_stats(img_dir):
     from data import data_utils
     rgb_imgs = natsorted(glob(os.path.join(img_dir, '*.jpg')))
     ds_mean, ds_std = data_utils.get_ds_stats(rgb_imgs)
-    print('Mean: {}'.format(ds_mean))
-    print('Std: {}'.format(ds_std))
+    return np.stack([ds_mean, ds_std], axis=0)
+
+
+val = process_block.ValueComputeProcess(DS_NAME, os.path.join(os.path.dirname(__file__), '../stats/builtin'),
+                                        os.path.join(os.path.dirname(__file__), '../stats/builtin/{}.npy'.format(DS_NAME)), func=get_stats).\
+    run(img_dir=r'/hdd/mrs/deepglobe/14p_pd0_ol0/patches').val
+val_test = val
 
 
 def get_images(data_dir):

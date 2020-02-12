@@ -13,9 +13,10 @@ from tqdm import tqdm
 
 # Own modules
 from data import data_utils
-from mrs_utils import misc_utils
+from mrs_utils import misc_utils, process_block
 
 # Settings
+DS_NAME = 'Inria'
 CITY_NAMES = ['austin', 'chicago', 'kitsap', 'tyrol-w', 'vienna',
               'bellingham', 'bloomington', 'innsbruck', 'sfo', 'tyrol-e']
 CITY_IDS = [0, 1, 2, 3, 4]
@@ -64,8 +65,13 @@ def get_stats(img_dir):
     from glob import glob
     rgb_imgs = glob(os.path.join(img_dir, '*.tif'))
     ds_mean, ds_std = data_utils.get_ds_stats(rgb_imgs)
-    print('Mean: {}'.format(ds_mean))
-    print('Std: {}'.format(ds_std))
+    return np.stack([ds_mean, ds_std], axis=0)
+
+
+val = process_block.ValueComputeProcess(DS_NAME, os.path.join(os.path.dirname(__file__), '../stats/builtin'),
+                                        os.path.join(os.path.dirname(__file__), '../stats/builtin/{}.npy'.format(DS_NAME)), func=get_stats).\
+    run(img_dir=r'/media/ei-edl01/data/remote_sensing_data/inria/images').val
+val_test = val
 
 
 def get_images(data_dir, city_ids=tuple(range(5)), tile_ids=tuple(range(1, 6))):
@@ -82,7 +88,7 @@ def get_images(data_dir, city_ids=tuple(range(5)), tile_ids=tuple(range(1, 6))):
 
 
 if __name__ == '__main__':
-    ps = 512
+    '''ps = 512
     pd = 0
     ol = 0
     save_dir = os.path.join(r'/hdd/mrs/inria', 'ps{}_pd{}_ol{}'.format(ps, pd, ol))
@@ -90,4 +96,11 @@ if __name__ == '__main__':
     patch_inria(data_dir=r'/media/ei-edl01/data/remote_sensing_data/inria',
                 save_dir=save_dir,
                 patch_size=(ps, ps),
-                pad=pd, overlap=ol)
+                pad=pd, overlap=ol)'''
+
+    func = get_stats
+    from mrs_utils import process_block
+    pb = process_block.ValueComputeProcess(DS_NAME, '../stats'.format(DS_NAME), '../stats/{}.npy'.format(DS_NAME),
+                                           func=func)
+    mean_val = pb.run(img_dir=r'/media/ei-edl01/data/remote_sensing_data/inria/images').val
+    print(mean_val)

@@ -14,9 +14,10 @@ from tqdm import tqdm
 
 # Own modules
 from data import data_utils
-from mrs_utils import misc_utils
+from mrs_utils import misc_utils, process_block
 
 # Settings
+DS_NAME = 'DeepGlobeRoad'
 MEAN = (0.40994515, 0.38314009, 0.28864455)
 STD = (0.12889884, 0.10563929, 0.09726452)
 
@@ -87,8 +88,7 @@ def get_stats(img_dir):
     for dir_ in dirs:
         rgb_imgs.extend([a[0] for a in data_utils.get_img_lbl(os.path.join(img_dir, dir_), 'sat.jpg', 'mask.png')])
     ds_mean, ds_std = data_utils.get_ds_stats(rgb_imgs)
-    print('Mean: {}'.format(ds_mean))
-    print('Std: {}'.format(ds_std))
+    return np.stack([ds_mean, ds_std], axis=0)
 
 
 def get_images(data_dir, valid_percent=0.14):
@@ -103,6 +103,14 @@ def get_images(data_dir, valid_percent=0.14):
             rgb_files.append(img_file)
             gt_files.append(lbl_file)
     return rgb_files, gt_files
+
+
+val = process_block.ValueComputeProcess(DS_NAME, os.path.join(os.path.dirname(__file__), '../stats/builtin'),
+                                        os.path.join(os.path.dirname(__file__),
+                                                     '../stats/builtin/{}.npy'.format(DS_NAME)),
+                                        func=get_stats).\
+    run(img_dir=r'/media/ei-edl01/data/remote_sensing_data/DeepGlobeRoad').val
+val_test = val
 
 
 if __name__ == '__main__':

@@ -14,9 +14,10 @@ from tqdm import tqdm
 
 # Own modules
 from data import data_utils
-from mrs_utils import misc_utils
+from mrs_utils import misc_utils, process_block
 
 # Settings
+DS_NAME = 'DeepGlobeLand'
 MEAN = (0.40851371, 0.37964116, 0.28266888)
 STD = (0.12667853, 0.10076384, 0.08919973)
 CLASS_NAMES = ['Urbanland', 'Agricultureland', 'Rangeland', 'Forestland', 'Water', 'Barrenland', 'Unknown']
@@ -108,17 +109,6 @@ def patch_deepglobeland(data_dir, save_dir, patch_size, pad, overlap, valid_perc
     record_file_valid.close()
 
 
-def get_stats(img_dir):
-    from data import data_utils
-    dirs = ['land-train/land-train',]
-    rgb_imgs = []
-    for dir_ in dirs:
-        rgb_imgs.extend([a[0] for a in data_utils.get_img_lbl(os.path.join(img_dir, dir_), 'sat.jpg', 'mask.png')])
-    ds_mean, ds_std = data_utils.get_ds_stats(rgb_imgs)
-    print('Mean: {}'.format(ds_mean))
-    print('Std: {}'.format(ds_std))
-
-
 def get_images(data_dir, valid_percent=0.14):
     files = data_utils.get_img_lbl(os.path.join(data_dir, 'land-train', 'land-train'), 'sat.jpg', 'mask.png')
     valid_size = int(len(files) * valid_percent)
@@ -135,6 +125,28 @@ def get_test_images(data_dir, set_name='land_valid_sat'):
     from natsort import natsorted
     img_files = natsorted(glob(os.path.join(data_dir, set_name, '*.jpg')))
     return img_files, img_files  # hacky way to get rid of length check in eval_utils
+
+
+def get_stats(img_dir, dirs=('land-train/land-train',), is_test=False):
+    from data import data_utils
+    if not is_test:
+        rgb_imgs = []
+        for dir_ in dirs:
+            rgb_imgs.extend([a[0] for a in data_utils.get_img_lbl(os.path.join(img_dir, dir_), 'sat.jpg', 'mask.png')])
+    else:
+        rgb_imgs, _ = get_test_images(img_dir)
+    ds_mean, ds_std = data_utils.get_ds_stats(rgb_imgs)
+    return np.stack([ds_mean, ds_std], axis=0)
+
+
+val = process_block.ValueComputeProcess(
+    DS_NAME, os.path.join(os.path.dirname(__file__), '../stats/builtin'),
+    os.path.join(os.path.dirname(__file__), '../stats/builtin/{}.npy').format(DS_NAME), func=get_stats).\
+    run(img_dir=r'/media/ei-edl01/data/remote_sensing_data/DGLand').val
+val_test = process_block.ValueComputeProcess(
+    DS_NAME+'_test', os.path.join(os.path.dirname(__file__), '../stats/builtin'),
+    os.path.join(os.path.dirname(__file__), '../stats/builtin/{}.npy'.format(DS_NAME)), func=get_stats).\
+    run(img_dir=r'/media/ei-edl01/data/remote_sensing_data/DGLand', is_test=True).val
 
 
 def get_class_distribution(img_dir):
