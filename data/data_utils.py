@@ -195,8 +195,8 @@ def get_custom_ds_stats(ds_name, img_dir):
         return np.stack([ds_mean, ds_std], axis=0)
 
     val = process_block.ValueComputeProcess(
-        ds_name, os.path.join(os.path.dirname(__file__), './stats/custom'),
-        os.path.join(os.path.dirname(__file__), './stats/custom/{}.npy'.format(ds_name)), func=get_stats). \
+        ds_name, os.path.join(os.path.dirname(__file__), 'stats', 'custom'),
+        os.path.join(os.path.dirname(__file__), 'stats', 'custom', '{}.npy'.format(ds_name)), func=get_stats). \
         run(img_dir=img_dir).val
     val_test = val
 
