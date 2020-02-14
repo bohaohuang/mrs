@@ -250,7 +250,7 @@ def batch_score(pred_files, lbl_files, min_region=5, min_th=0.5, link_r=20, eps=
     return conf, true
 
 
-def read_results(result_name, regex=None, sum_results=False, delta=1e-6):
+'''def read_results(result_name, regex=None, sum_results=False, delta=1e-6):
     """
     Read and parse evaluated results text file
     :param result_name: path to the results file
@@ -276,6 +276,66 @@ def read_results(result_name, regex=None, sum_results=False, delta=1e-6):
         return iou_a / (iou_b + delta) * 100
     elif sum_results:
         return results['Overall']['iou']
+    else:
+        return results'''
+
+
+def read_results(result_name, regex=None, sum_results=False, delta=1e-6, class_names=None):
+    """
+    Read and parse evaluated results text file
+    :param result_name: path to the results file
+    :param regex: if given, it will be applied to select lines that match the name
+    :param sum_results: if True, return the IoU of the overall dataset
+    :param delta: a small value to prevent divided by zero
+    :param class_names: list of strings for class names, if None, they will be class_i
+    :return:
+    """
+    def update_results(res, n, i_res, c_names):
+        if c_names is not None:
+            assert len(i_res) == 2 * len(c_names)
+        else:
+            c_names = ['class_{}'.format(i) for i in range(len(i_res) // 2)]
+        for cnt, c_name in enumerate(c_names):
+            res[n][c_name+'_a'] = i_res[cnt * 2]
+            res[n][c_name+'_b'] = i_res[cnt * 2 + 1]
+        return c_names
+
+    def combine_results(res, i_res):
+        if res is None:
+            for k, v in i_res.items():
+                if k != 'iou':
+                    res[k] = v
+        else:
+            for k, v in i_res.items():
+                if k != 'iou':
+                    res[k] += v
+
+    def summarize_results(res):
+        sum_res = dict()
+        sum_res['iou'] = res['iou']
+        for c_name in class_names:
+            sum_res[c_name] = (float(res[c_name + '_a']) / float(res[c_name + '_b']) + delta) * 100
+        return sum_res
+
+    results = {}
+    result_lines = misc_utils.load_file(result_name)
+
+    for line in result_lines:
+        if len(line) <= 1:
+            continue
+        name, iou_a, iou_b, *ious, iou = line.strip().split(',')
+        iou_a, iou_b, iou = float(iou_a), float(iou_b), float(iou)
+        results[name] = {'iou': iou, 'iou_a': iou_a, 'iou_b': iou_b}
+        class_names = update_results(results, name, ious, class_names)
+    if regex:
+        comb_res = None
+        pattern = re.compile(regex)
+        for key, val in results.items():
+            if pattern.match(key):
+                combine_results(comb_res, val)
+        return summarize_results(comb_res)
+    elif sum_results:
+        return summarize_results(results['Overall'])
     else:
         return results
 
