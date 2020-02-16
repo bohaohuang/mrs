@@ -11,7 +11,6 @@ from glob import glob
 # Libs
 import numpy as np
 from tqdm import tqdm
-from osgeo import gdal
 from natsort import natsorted
 
 # Own modules
@@ -53,6 +52,8 @@ def convert_gtif_to_8bit(src_raster_path, dst_raster_path):
     :param dst_raster_path:
     :return:
     """
+    from osgeo import gdal
+
     srcRaster = gdal.Open(src_raster_path)
 
     outputPixType = 'Byte'
