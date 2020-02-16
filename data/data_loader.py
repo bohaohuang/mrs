@@ -26,7 +26,7 @@ def get_file_paths(parent_path, file_list):
     img_list = []
     lbl_list = []
     for fl in file_list:
-        img_filename, lbl_filename = [os.path.join(parent_path, a) for a in fl.strip().split(' ')]
+        img_filename, lbl_filename = [os.path.join(parent_path, a) for a in fl.strip().split(' ')[:2]]
         img_list.append(img_filename)
         lbl_list.append(lbl_filename)
     return img_list, lbl_list

@@ -10,7 +10,6 @@ from glob import glob
 
 # Libs
 import numpy as np
-import solaris as sol
 from tqdm import tqdm
 from osgeo import gdal
 from natsort import natsorted
@@ -87,6 +86,8 @@ def check_blank_region(img):
 
 
 def make_dataset(ds_train, ds_valid, save_dir, th=0.5):
+    import solaris as sol
+
     # create folders and files
     patch_dir = os.path.join(save_dir, 'patches')
     misc_utils.make_dir_if_not_exist(patch_dir)
