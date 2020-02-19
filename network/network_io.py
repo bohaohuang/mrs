@@ -149,7 +149,7 @@ def get_dataset_stats(ds_name, img_dir, load_func=None, mean_val=([0.485, 0.456,
         val = process_block.ValueComputeProcess(
             ds_name, os.path.join(os.path.dirname(__file__), '../data/stats/custom'),
             os.path.join(os.path.dirname(__file__), '../data/stats/custom/{}.npy'.format(ds_name)),
-            func=data_utils.default_get_stats). \
+            func=load_func). \
             run(img_dir=img_dir).val
         # val = load_func(ds_name, img_dir)[0]
         print('Use {} mean std stats: {}'.format(ds_name, val))
