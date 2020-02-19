@@ -161,6 +161,12 @@ def get_ds_stats(img_files):
     return ds_mean, ds_std
 
 
+def default_get_stats(img_dir):
+    rgb_imgs = natsorted(glob(os.path.join(img_dir, '*.jpg')))
+    ds_mean, ds_std = get_ds_stats(rgb_imgs)
+    return np.stack([ds_mean, ds_std], axis=0)
+
+
 def patch_tile(rgb_file, gt_file, patch_size, pad, overlap):
     """
     Extract the given rgb and gt tiles into patches

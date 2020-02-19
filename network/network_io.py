@@ -15,7 +15,8 @@ from torch import optim
 from albumentations.pytorch import ToTensorV2
 
 # Own modules
-from mrs_utils import misc_utils, metric_utils
+from data import data_utils
+from mrs_utils import misc_utils, metric_utils, process_block
 from network import unet, pspnet, dlinknet, deeplabv3, network_utils
 
 
@@ -145,7 +146,12 @@ def get_dataset_stats(ds_name, img_dir, load_func=None, mean_val=([0.485, 0.456,
         val = preprocess.get_stats_pb(img_dir)[0]
         print('Use {} mean std stats: {}'.format(ds_name, val))
     elif load_func:
-        val = load_func(ds_name, img_dir)[0]
+        val = process_block.ValueComputeProcess(
+            ds_name, os.path.join(os.path.dirname(__file__), '../data/stats/custom'),
+            os.path.join(os.path.dirname(__file__), '../data/stats/custom/{}.npy'.format(ds_name)),
+            func=data_utils.default_get_stats). \
+            run(img_dir=img_dir).val
+        # val = load_func(ds_name, img_dir)[0]
         print('Use {} mean std stats: {}'.format(ds_name, val))
     else:
         print('Dataset {} is not supported, use default mean stats instead'.format(ds_name))
