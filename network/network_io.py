@@ -151,7 +151,6 @@ def get_dataset_stats(ds_name, img_dir, load_func=None, mean_val=([0.485, 0.456,
             os.path.join(os.path.dirname(__file__), '../data/stats/custom/{}.npy'.format(ds_name)),
             func=load_func). \
             run(img_dir=img_dir).val
-        # val = load_func(ds_name, img_dir)[0]
         print('Use {} mean std stats: {}'.format(ds_name, val))
     else:
         print('Dataset {} is not supported, use default mean stats instead'.format(ds_name))
