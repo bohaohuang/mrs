@@ -250,36 +250,6 @@ def batch_score(pred_files, lbl_files, min_region=5, min_th=0.5, link_r=20, eps=
     return conf, true
 
 
-'''def read_results(result_name, regex=None, sum_results=False, delta=1e-6):
-    """
-    Read and parse evaluated results text file
-    :param result_name: path to the results file
-    :param regex: if given, it will be applied to select lines that match the name
-    :param sum_results: if True, return the IoU of the overall dataset
-    :param delta: a small value to prevent divided by zero
-    :return:
-    """
-    results = {}
-    result_lines = misc_utils.load_file(result_name)
-    for line in result_lines:
-        if len(line) <= 1:
-            continue
-        name, iou_a, iou_b, iou = line.strip().split(',')
-        results[name] = {'iou_a': float(iou_a), 'iou_b': float(iou_b), 'iou': float(iou)}
-    if regex:
-        pattern = re.compile(regex)
-        iou_a, iou_b = 0, 0
-        for key, val in results.items():
-            if pattern.match(key):
-                iou_a += val['iou_a']
-                iou_b += val['iou_b']
-        return iou_a / (iou_b + delta) * 100
-    elif sum_results:
-        return results['Overall']['iou']
-    else:
-        return results'''
-
-
 def read_results(result_name, regex=None, sum_results=False, delta=1e-6, class_names=None):
     """
     Read and parse evaluated results text file
@@ -302,19 +272,30 @@ def read_results(result_name, regex=None, sum_results=False, delta=1e-6, class_n
 
     def combine_results(res, i_res):
         if res is None:
+            res = dict()
             for k, v in i_res.items():
                 if k != 'iou':
-                    res[k] = v
+                    res.update({k: v})
         else:
             for k, v in i_res.items():
                 if k != 'iou':
-                    res[k] += v
+                    if k in res:
+                        res[k] += v
+                    else:
+                        res.update({k: v})
+        return res
 
     def summarize_results(res):
         sum_res = dict()
-        sum_res['iou'] = res['iou']
-        for c_name in class_names:
-            sum_res[c_name] = (float(res[c_name + '_a']) / float(res[c_name + '_b']) + delta) * 100
+        for c_name in class_names+['iou']:
+            res[c_name] = (float(res[c_name + '_a']) / float(res[c_name + '_b']) + delta) * 100
+        if 'iou' in res:
+            sum_res['iou'] = res['iou']
+        else:
+            overall_iou = []
+            for c_name in class_names:
+                overall_iou.append(sum_res[c_name])
+            sum_res['iou'] = np.mean(overall_iou)
         return sum_res
 
     results = {}
@@ -332,7 +313,7 @@ def read_results(result_name, regex=None, sum_results=False, delta=1e-6, class_n
         pattern = re.compile(regex)
         for key, val in results.items():
             if pattern.match(key):
-                combine_results(comb_res, val)
+                comb_res = combine_results(comb_res, val)
         return summarize_results(comb_res)
     elif sum_results:
         return summarize_results(results['Overall'])
