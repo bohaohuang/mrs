@@ -95,18 +95,18 @@ def train_model(args, device, parallel):
     train_loader = DataLoader(data_loader.get_loader(
         args['dataset']['data_dir'], args['dataset']['train_file'], transforms=tsfm_train,
         aux_loss=args['optimizer']['aux_loss']),
-        batch_size=args['dataset']['batch_size'], shuffle=True, num_workers=args['dataset']['num_workers'],
+        batch_size=int(args['dataset']['batch_size']), shuffle=True, num_workers=int(args['dataset']['num_workers']),
         drop_last=True)
     valid_loader = DataLoader(data_loader.get_loader(
         args['dataset']['data_dir'], args['dataset']['valid_file'], transforms=tsfm_valid,
         aux_loss=args['optimizer']['aux_loss']),
-        batch_size=args['dataset']['batch_size'], shuffle=False, num_workers=args['dataset']['num_workers'])
+        batch_size=int(args['dataset']['batch_size']), shuffle=False, num_workers=int(args['dataset']['num_workers']))
     print('Training model on the {} dataset'.format(args['dataset']['ds_name']))
     train_val_loaders = {'train': train_loader, 'valid': valid_loader}
 
     # train the model
     loss_dict = {}
-    for epoch in range(args['trainer']['resume_epoch'], args['trainer']['epochs']):
+    for epoch in range(int(args['trainer']['resume_epoch']), int(args['trainer']['epochs'])):
         # each epoch has a training and validation step
         for phase in ['train', 'valid']:
             start_time = timeit.default_timer()
@@ -123,16 +123,16 @@ def train_model(args, device, parallel):
                 loss_dict = model.step(train_val_loaders[phase], device, optm, phase, criterions,
                                        eval(args['trainer']['bp_loss_idx']), True, mean, std,
                                        loss_weights=eval(args['trainer']['loss_weights']))
-            network_utils.write_and_print(writer, phase, epoch, args['trainer']['epochs'], loss_dict, start_time)
+            network_utils.write_and_print(writer, phase, epoch, int(args['trainer']['epochs']), loss_dict, start_time)
 
         scheduler.step()
         # save the model
-        if epoch % args['trainer']['save_epoch'] == 0 and epoch != 0:
+        if epoch % int(args['trainer']['save_epoch']) == 0 and epoch != 0:
             save_name = os.path.join(args['save_dir'], 'epoch-{}.pth.tar'.format(epoch))
             network_utils.save(model, epoch, optm, loss_dict, save_name)
     # save model one last time
-    save_name = os.path.join(args['save_dir'], 'epoch-{}.pth.tar'.format(args['trainer']['epochs']))
-    network_utils.save(model, args['trainer']['epochs'], optm, loss_dict, save_name)
+    save_name = os.path.join(args['save_dir'], 'epoch-{}.pth.tar'.format(int(args['trainer']['epochs'])))
+    network_utils.save(model, int(args['trainer']['epochs']), optm, loss_dict, save_name)
     writer.close()
 
 
