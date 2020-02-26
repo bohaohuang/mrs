@@ -114,10 +114,13 @@ def unpatch_block(blocks, tile_dim, patch_size, tile_dim_output=None, patch_size
         patch_size_output = patch_size
     _, _, _, c = blocks.shape
     image = np.zeros((tile_dim_output[0], tile_dim_output[1], c))
+    image_cnt = np.zeros_like(image)
     for cnt, (corner_h, corner_w) in enumerate(make_grid(tile_dim, patch_size, overlap)):
         image[corner_h:corner_h + patch_size_output[0], corner_w:corner_w + patch_size_output[1], :] \
             += blocks[cnt, :, :, :]
-    return image
+        image_cnt[corner_h:corner_h + patch_size_output[0], corner_w:corner_w + patch_size_output[1], :] \
+            += np.ones_like(blocks[cnt, :, :, :])
+    return image / image_cnt
 
 
 def patch_extractor(file_list, file_exts, patch_size, pad, overlap, save_path, force_run=False):

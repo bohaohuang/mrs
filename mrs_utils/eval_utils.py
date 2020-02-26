@@ -8,6 +8,7 @@ import os
 import re
 
 # Libs
+import scipy.special
 import skimage.transform
 import numpy as np
 from tqdm import tqdm
@@ -440,7 +441,8 @@ class Evaluator:
                 overlap=2*model.lbl_margin
             )
             if save_conf:
-                misc_utils.save_file(os.path.join(pred_dir, '{}.npy'.format(file_name)), tile_preds[:, :, 1])
+                misc_utils.save_file(os.path.join(pred_dir, '{}.npy'.format(file_name)),
+                                     scipy.special.softmax(tile_preds, axis=-1)[:, :, 1])
             tile_preds = np.argmax(tile_preds, -1)
             iou_score = metric_utils.iou_metric(lbl/self.truth_val, tile_preds, eval_class=eval_class)
             pstr, rstr = self.get_result_strings(file_name, iou_score, delta)
