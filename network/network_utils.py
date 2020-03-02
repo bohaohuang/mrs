@@ -83,10 +83,10 @@ def load_epoch(save_dir, resume_epoch, model, optm, device):
     :return:
     """
     checkpoint = torch.load(
-        os.path.join(save_dir, 'epoch-' + str(resume_epoch - 1) + '.pth.tar'),
+        os.path.join(save_dir, 'epoch-' + str(resume_epoch) + '.pth.tar'),
         map_location=lambda storage, loc: storage)  # Load all tensors onto the CPU
     print("Initializing weights from: {}...".format(
-        os.path.join(save_dir, 'epoch-' + str(resume_epoch - 1) + '.pth.tar')))
+        os.path.join(save_dir, 'epoch-' + str(resume_epoch) + '.pth.tar')))
     model.load_state_dict(checkpoint['state_dict'])
     optm.load_state_dict(checkpoint['opt_dict'])
     # individually transfer the optimizer parts, this part comes from
@@ -143,7 +143,7 @@ def flex_load(model_dict, ckpt_dict, relax_load=False, disable_parallel=False, v
         if verb:
             print('Try loading without those parameters')
         return pretrained_state
-    elif disable_parallel:
+    elif disable_parallel or 'module' in [a for a in ckpt_params if a not in self_params][0]:
         pretrained_state = {k: v for k, v in ckpt_dict.items() if k.replace('module.', '') in model_dict and
                             v.size() == model_dict[k.replace('module.', '')].size()}
         if len(pretrained_state) == 0:
