@@ -128,7 +128,7 @@ def train_model(args, device, parallel):
         scheduler.step()
         # save the model
         if epoch % int(args['trainer']['save_epoch']) == 0 and epoch != 0:
-            save_name = os.path.join(args['save_dir'], 'epoch-{}.pth.tar'.format(epoch))
+            save_name = os.path.join(args['save_dir'], 'epoch-{}.pth.tar'.format(epoch+1))
             network_utils.save(model, epoch, optm, loss_dict, save_name)
     # save model one last time
     save_name = os.path.join(args['save_dir'], 'epoch-{}.pth.tar'.format(int(args['trainer']['epochs'])))
