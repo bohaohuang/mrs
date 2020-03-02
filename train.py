@@ -76,7 +76,10 @@ def train_model(args, device, parallel):
         print('Training decoder {} with encoder {} from scratch ...'.format(args['decoder_name'], args['encoder_name']))
     elif args['trainer']['resume_epoch'] == 0 and args['trainer']['finetune_dir']:
         print('Finetuning model from {}'.format(args['trainer']['finetune_dir']))
-        network_utils.load(model, args['trainer']['finetune_dir'], relax_load=True)
+        if args['trainer']['further_train']:
+            network_utils.load(model, args['trainer']['finetune_dir'], relax_load=True, optm=optm, device=device)
+        else:
+            network_utils.load(model, args['trainer']['finetune_dir'], relax_load=True)
     else:
         print('Resume training decoder {} with encoder {} from epoch {} ...'.format(
             args['decoder_name'], args['encoder_name'], args['trainer']['resume_epoch']))
