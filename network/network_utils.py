@@ -206,8 +206,12 @@ def load(model, model_path, relax_load=False, disable_parallel=False):
     try:
         model.load_state_dict(checkpoint['state_dict'])
     except RuntimeError:
-        pretrained_state = flex_load(model.state_dict(), checkpoint['state_dict'], relax_load, disable_parallel)
-        model.load_state_dict(pretrained_state, strict=False)
+        try:
+            pretrained_state = flex_load(model.state_dict(), checkpoint['state_dict'], relax_load, disable_parallel)
+            model.load_state_dict(pretrained_state, strict=False)
+        except ValueError:
+            model = DataParallelPassThrough(model)
+            model.load_state_dict(checkpoint['state_dict'])
     except KeyError:
         # FIXME this is a adhoc fix to be compatible with RSMoCo
         pretrained_state = flex_load(model.state_dict(), checkpoint['model'], relax_load, disable_parallel)
@@ -270,3 +274,15 @@ def unique_model_name(cfg):
         cfg['encoder_name'], cfg['decoder_name'], cfg['dataset']['ds_name'], cfg['optimizer']['learn_rate_encoder'],
         cfg['optimizer']['learn_rate_decoder'], cfg['trainer']['epochs'], cfg['dataset']['batch_size'],
         decay_str, dr_str, criterion_str, aux_str)
+
+
+class DataParallelPassThrough(torch.nn.DataParallel):
+    """
+    Access model attributes after DataParallel wrapper
+    this code comes from: https://github.com/pytorch/pytorch/issues/16885#issuecomment-551779897
+    """
+    def __getattr__(self, name):
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            return getattr(self.module, name)
