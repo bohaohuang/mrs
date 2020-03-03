@@ -54,8 +54,9 @@ def train_model(args, device, parallel):
     except (RuntimeError, TypeError, AttributeError):
         print('Warning: could not write graph to tensorboard, this might be a bug in tensorboardX')
     if parallel:
-        model.encoder = nn.DataParallel(model.encoder)
-        model.decoder = nn.DataParallel(model.decoder)
+        # model.encoder = nn.DataParallel(model.encoder)
+        # model.decoder = nn.DataParallel(model.decoder)
+        model = network_utils.DataParallelPassThrough(model)
         if args['optimizer']['aux_loss']:
             model.cls = nn.DataParallel(model.cls)
         print('Parallel training mode enabled!')

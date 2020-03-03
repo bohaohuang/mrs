@@ -32,7 +32,7 @@ def main():
     if LOAD_EPOCH:
         args['trainer']['epochs'] = LOAD_EPOCH
     ckpt_dir = os.path.join(MODEL_DIR, 'epoch-{}.pth.tar'.format(args['trainer']['epochs']))
-    network_utils.load(model, ckpt_dir, disable_parallel=True)
+    network_utils.load(model, ckpt_dir)
     print('Loaded from {}'.format(ckpt_dir))
     model.to(device)
     model.eval()
