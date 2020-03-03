@@ -411,6 +411,6 @@ def historical_process_flag(flags):
         flags['trainer']['loss_weights'] = (flags['trainer']['loss_weights'],)
     if 'further_train' not in flags['trainer']:
         flags['trainer']['further_train'] = False
-    else:
+    elif isinstance(flags['trainer']['further_train'], str):
         flags['trainer']['further_train'] = eval(flags['trainer']['further_train'])
     return flags
