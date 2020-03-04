@@ -12,6 +12,17 @@
 - [Object-wise scoring](./demo/object_scoring.ipynb)
 - [Results visualization](./demo/results_visualization.ipynb)
 
+## Encoders
+| Encoder Family | Encoder Name |
+|:---------------------------------------------:|:------------------------------------------------------------------:|
+|[VGG](./network/backbones/vggnet.py)           | vgg11, vgg11_bn, vgg13, vgg13_bn, vgg16, vgg16_bn, vgg19, vgg19_bn |
+|[ResNet](./network/backbones/resnet.py)        | resnet18, resnet34, resnet50, resnet101                            |
+|[ResNeXt](./network/backbones/resnet.py)       | resnext50_32x4d, resnext101_32x8d                                  |
+|[WideResNet](./network/backbones/resnet.py)    | wide_resnet50_2, wide_resnet101_2                                  |
+|[Res2Net](./network/backbones/resnet.py)       | res2net50_14w_8s, res2net50_26w_4s, res2net50_26w_6s, res2net50_26w_8s, res2net50_48w_2s, res2net101_26w_4s |
+|[Inception](./network/backbones/inception.py)  | inception_v3                                                       |
+|[SqueezeNet](./network/backbones/squeezenet.py)| squeezenet1_0, squeezenet1_1                                       |
+
 ## Pretrained Models
 | Encoder Name | Decoder Name | Dataset   | Label    | Score (IoU) | Size    | Model |
 |:------------:|:------------:|:---------:|:--------:|:-----------:|:--------|:-----:|
@@ -39,7 +50,7 @@
     - [ ] DenseNet
     - [x] [SqueezeNet](./network/backbones/squeezenet.py)
     - [x] [InceptionNet](./network/backbones/inception.py)
-- [ ] Decoder Structures:
+- [X] Decoder Structures:
     - [X] [UNet](./network/unet.py)
     - [X] [DLinkNet](./network/dlinknet.py)
     - [X] [PSPNet](./network/pspnet.py)
@@ -58,5 +69,5 @@
 - [X] Class weights on criterions
 
 ## Known Bugs
-- [ ] Unable to do model-wise data parallel
-- [ ] [Failed to load models that trained on multiple gpus](https://github.com/bohaohuang/mrs/issues/8)
+- [X] Unable to do model-wise data parallel
+- [X] [Failed to load models that trained on multiple gpus](https://github.com/bohaohuang/mrs/issues/8)
