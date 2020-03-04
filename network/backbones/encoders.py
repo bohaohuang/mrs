@@ -14,7 +14,7 @@ from network.backbones import vggnet, resnet, squeezenet, inception
 def models(model_name, pretrained, strides, inter_features):
     if 'vgg' in model_name:
         return getattr(vggnet, model_name)(pretrained, strides, inter_features)
-    elif 'resnet' in model_name or 'resnext':
+    elif 'resnet' in model_name or 'resnext' in model_name:
         return getattr(resnet, model_name)(pretrained, strides, inter_features)
     elif 'squeezenet' in model_name:
         return getattr(squeezenet, model_name)(pretrained, strides, inter_features)
