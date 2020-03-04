@@ -27,7 +27,7 @@ class _ASPPModule(nn.Module):
         self.atrous_conv = nn.Conv2d(inplanes, planes, kernel_size=kernel_size,
                                      stride=1, padding=padding, dilation=dilation, bias=False)
         self.bn = BatchNorm(planes)
-        self.relu = nn.ReLU()
+        self.relu = nn.ReLU(inplace=True)
 
         self._init_weight()
 
@@ -66,10 +66,10 @@ class ASPP(nn.Module):
         self.global_avg_pool = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)),
                                              nn.Conv2d(inchan, outchan, 1, stride=1, bias=False),
                                              nn.BatchNorm2d(outchan),
-                                             nn.ReLU())
+                                             nn.ReLU(inplace=True))
         self.final_conv = nn.Sequential(nn.Conv2d(outchan*5, outchan, 1, bias=False),
                                         nn.BatchNorm2d(outchan),
-                                        nn.ReLU(),
+                                        nn.ReLU(inplace=True),
                                         nn.Dropout(dropout_rate))
         self._init_weight()
 
@@ -102,14 +102,14 @@ class DeepLabV3Decoder(base_model.Base):
         self.aspp = ASPP(inchan, outchan=outchan, dropout_rate=dropout_rate)
         self.conv1 = nn.Sequential(nn.Conv2d(layerchan, 48, 1, bias=False),
                                    nn.BatchNorm2d(48),
-                                   nn.ReLU())
+                                   nn.ReLU(inplace=True))
         self.conv3 = nn.Sequential(nn.Conv2d(304, outchan, kernel_size=3, stride=1, padding=1, bias=False),
                                    nn.BatchNorm2d(outchan),
-                                   nn.ReLU(),
+                                   nn.ReLU(inplace=True),
                                    nn.Dropout(dropout_rate),
                                    nn.Conv2d(outchan, outchan, kernel_size=3, stride=1, padding=1, bias=False),
                                    nn.BatchNorm2d(outchan),
-                                   nn.ReLU(),
+                                   nn.ReLU(inplace=True),
                                    nn.Dropout(0.1),
                                    nn.Conv2d(outchan, class_num, kernel_size=1, stride=1))
 
@@ -144,7 +144,7 @@ class DeepLabV3(base_model.Base):
         if self.aux_loss:
             self.cls = nn.Sequential(
                 nn.Linear(self.encoder.chans[0], 256),
-                nn.ReLU(),
+                nn.ReLU(inplace=True),
                 nn.Linear(256, self.n_class)
             )
         else:

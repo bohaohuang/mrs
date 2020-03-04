@@ -29,7 +29,7 @@ class PSPDecoder(nn.Module):
         super(PSPDecoder, self).__init__()
         self.stages = nn.ModuleList([self.make_stage(in_chan, size) for size in bin_sizes])
         self.bottleneck = nn.Conv2d(in_chan * (len(bin_sizes) + 1), out_chan, kernel_size=1)
-        self.relu = nn.ReLU()
+        self.relu = nn.ReLU(inplace=True)
         self.drop_1 = nn.Dropout2d(p=drop_rate)
         self.up_1 = PSPUpsample(out_chan, out_chan//4)
         self.up_2 = PSPUpsample(out_chan//4, out_chan//16)
@@ -95,7 +95,7 @@ class PSPNet(base_model.Base):
         if self.aux_loss:
             self.cls = nn.Sequential(
                 nn.Linear(self.encoder.chans[0], 256),
-                nn.ReLU(),
+                nn.ReLU(inplace=True),
                 nn.Linear(256, self.n_class)
             )
         else:

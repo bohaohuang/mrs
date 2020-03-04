@@ -105,7 +105,7 @@ class DLinkNet(base_model.Base):
         if self.aux_loss:
             self.cls = nn.Sequential(
                 nn.Linear(self.encoder.chans[0], 256),
-                nn.ReLU(),
+                nn.ReLU(inplace=True),
                 nn.Linear(256, self.n_class)
             )
         else:
