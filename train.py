@@ -54,10 +54,10 @@ def train_model(args, device, parallel):
     except (RuntimeError, TypeError, AttributeError):
         print('Warning: could not write graph to tensorboard, this might be a bug in tensorboardX')
     if parallel:
-        model.encoder = nn.DataParallel(model.encoder)
-        model.decoder = nn.DataParallel(model.decoder)
+        model.encoder = network_utils.DataParallelPassThrough(model.encoder)
+        model.decoder = network_utils.DataParallelPassThrough(model.decoder)
         if args['optimizer']['aux_loss']:
-            model.cls = nn.DataParallel(model.cls)
+            model.cls = network_utils.DataParallelPassThrough(model.cls)
         print('Parallel training mode enabled!')
     train_params = model.set_train_params((args['optimizer']['learn_rate_encoder'],
                                            args['optimizer']['learn_rate_decoder']))
@@ -131,7 +131,7 @@ def train_model(args, device, parallel):
         scheduler.step()
         # save the model
         if epoch % int(args['trainer']['save_epoch']) == 0 and epoch != 0:
-            save_name = os.path.join(args['save_dir'], 'epoch-{}.pth.tar'.format(epoch))
+            save_name = os.path.join(args['save_dir'], 'epoch-{}.pth.tar'.format(epoch+1))
             network_utils.save(model, epoch, optm, loss_dict, save_name)
     # save model one last time
     save_name = os.path.join(args['save_dir'], 'epoch-{}.pth.tar'.format(int(args['trainer']['epochs'])))
