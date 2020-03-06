@@ -73,6 +73,22 @@ def network_summary(network, input_size, **kwargs):
     summary(net, input_size, device='cpu')
 
 
+def load_optim(optim, state_dict, device):
+    """
+    Load the optimizer and then individually transfer the optimizer parts, this part comes from
+    https://discuss.pytorch.org/t/loading-a-saved-model-for-continue-training/17244/4
+    :param optim: the optimizer
+    :param state_dict: state dictionary
+    :param device:  device to place the models
+    :return:
+    """
+    optim.load_state_dict(state_dict)
+    for state in optim.state.values():
+        for k, v in state.items():
+            if isinstance(v, torch.Tensor):
+                state[k] = v.to(device)
+
+
 def load_epoch(save_dir, resume_epoch, model, optm, device):
     """
     Load model from a snapshot, this function can be used to resume training
@@ -88,13 +104,7 @@ def load_epoch(save_dir, resume_epoch, model, optm, device):
     print("Initializing weights from: {}...".format(
         os.path.join(save_dir, 'epoch-' + str(resume_epoch) + '.pth.tar')))
     model.load_state_dict(checkpoint['state_dict'])
-    optm.load_state_dict(checkpoint['opt_dict'])
-    # individually transfer the optimizer parts, this part comes from
-    # https://discuss.pytorch.org/t/loading-a-saved-model-for-continue-training/17244/4
-    for state in optm.state.values():
-        for k, v in state.items():
-            if isinstance(v, torch.Tensor):
-                state[k] = v.to(device)
+    load_optim(optm, checkpoint['opt_dict'], device)
 
 
 def sequential_load(target, source_state):
@@ -188,7 +198,7 @@ def flex_load(model_dict, ckpt_dict, relax_load=False, disable_parallel=False, v
         return pretrained_state
 
 
-def load(model, model_path, relax_load=False, disable_parallel=False):
+def load(model, model_path, relax_load=False, disable_parallel=False, optm=None, device=None):
     """
     Load the weights in the pretrained model directory, the order of loading method is as follows:
     1. Try load the exact name of tensors in the pretrained model file, if not all names are the same, try 2;
@@ -217,6 +227,9 @@ def load(model, model_path, relax_load=False, disable_parallel=False):
         # FIXME this is a adhoc fix to be compatible with RSMoCo
         pretrained_state = flex_load(model.state_dict(), checkpoint['model'], relax_load, disable_parallel)
         model.load_state_dict(pretrained_state, strict=False)
+    if optm is not None:
+        assert device is not None
+        load_optim(optm, checkpoint['opt_dict'], device)
 
 
 def save(model, epochs, optm, loss_dict, save_name):
