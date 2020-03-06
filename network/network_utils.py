@@ -220,8 +220,12 @@ def load(model, model_path, relax_load=False, disable_parallel=False, optm=None,
             pretrained_state = flex_load(model.state_dict(), checkpoint['state_dict'], relax_load, disable_parallel)
             model.load_state_dict(pretrained_state, strict=False)
         except ValueError:
-            model.encoder = DataParallelPassThrough(model.encoder)
-            model.decoder = DataParallelPassThrough(model.decoder)
+            if device is not None:
+                gpu = device.index
+            else:
+                gpu = 0
+            model.encoder = DataParallelPassThrough(model.encoder, [gpu, ])
+            model.decoder = DataParallelPassThrough(model.decoder, [gpu, ])
             model.load_state_dict(checkpoint['state_dict'])
     except KeyError:
         # FIXME this is a adhoc fix to be compatible with RSMoCo
