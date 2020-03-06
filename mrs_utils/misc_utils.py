@@ -409,4 +409,8 @@ def historical_process_flag(flags):
         flags['trainer']['bp_loss_idx'] = '({},)'.format(flags['trainer']['bp_loss_idx'])
     if isinstance(flags['trainer']['loss_weights'], int):
         flags['trainer']['loss_weights'] = (flags['trainer']['loss_weights'],)
+    if 'further_train' not in flags['trainer']:
+        flags['trainer']['further_train'] = False
+    elif isinstance(flags['trainer']['further_train'], str):
+        flags['trainer']['further_train'] = eval(flags['trainer']['further_train'])
     return flags
