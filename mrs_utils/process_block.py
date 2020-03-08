@@ -22,6 +22,7 @@ class BasicProcess(object):
         """
         self.name = name
         self.path = path
+        misc_utils.make_dir_if_not_exist(self.path)
         if func is None:
             self.func = self.process
         else:
