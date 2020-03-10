@@ -4,6 +4,7 @@ import time
 import json
 import pickle
 import collections.abc
+from glob import glob
 from functools import wraps
 
 # Libs
@@ -14,6 +15,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image
 from skimage import io
+from natsort import natsorted
 from torchsummary import summary
 
 # Own modules
@@ -316,6 +318,25 @@ def get_default_colors():
     prop_cycle = plt.rcParams['axes.prop_cycle']
     colors = prop_cycle.by_key()['color']
     return colors
+
+
+def get_file_name_no_extension(file_name):
+    """
+    Handy function for getting the file name without path and extension
+    :param file_name: the name or path to the file
+    :return: filename without extension
+    """
+    return os.path.splitext(os.path.basename(file_name))[0]
+
+
+def get_files(path_list, extension):
+    """
+    Get files in the given folder that matches certain regex
+    :param path_list: list of path to the directory
+    :param extension: regex that filters the desired files
+    :return: list of files
+    """
+    return natsorted(glob(os.path.join(*path_list, extension)))
 
 
 def recursive_update(d, u):

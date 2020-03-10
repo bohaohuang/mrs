@@ -9,6 +9,7 @@
 - [Albumentation](https://github.com/albu/albumentations)
 
 ## Demos
+- [Histogram matching](./demo/hist_match.ipynb)
 - [Object-wise scoring](./demo/object_scoring.ipynb)
 - [Results visualization](./demo/results_visualization.ipynb)
 
