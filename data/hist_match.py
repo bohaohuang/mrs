@@ -15,12 +15,21 @@ from mrs_utils import misc_utils
 
 
 class HistMatcher(object):
+    """
+    Match the histogram between two datasets
+    """
     def __init__(self, source_imgs):
         self.source_imgs = source_imgs
         self.source_hist = self.get_histogram(source_imgs, True)
 
     @staticmethod
     def get_histogram(img_files, progress=False):
+        """
+        Get the histogram of given list of images
+        :param img_files: list of images, could be file names or numpy arrays
+        :param progress: if True, will show a progress bar
+        :return: a numpy array of size (3, 256) where each row represents histogram of certain color channel
+        """
         hist = np.zeros((3, 256))
         if progress:
             pbar = tqdm(img_files)
@@ -38,6 +47,13 @@ class HistMatcher(object):
 
     @staticmethod
     def match_image(dist_t, dist_s, img_s):
+        """
+        Adjust the given image so that its histogram matches the target distribution
+        :param dist_t: the target histogram distribution
+        :param dist_s: the source histogram distribution
+        :param img_s: the source image
+        :return: the adjusted image
+        """
         bins = np.arange(dist_s.shape[1] + 1)
         im_res = np.zeros_like(img_s)
         for d in range(dist_s.shape[0]):
@@ -55,12 +71,24 @@ class HistMatcher(object):
         return im_res
 
     def match_target_images(self, target_imgs):
+        """
+        Match the given list of target images
+        :param target_imgs: list of image files, could be file names or numpy arrays
+        :return: a generator that yields adjusted image one each time
+        """
         target_hist = self.get_histogram(target_imgs)
         for target_img_file in target_imgs:
-            img = misc_utils.load_file(target_img_file)
+            if isinstance(target_img_file, str):
+                img = misc_utils.load_file(target_img_file)
+            else:
+                img = target_img_file
             yield self.match_image(self.source_hist, target_hist, img)
 
     def vis_transform_pair(self, target_img_files):
+        """
+        Visualize a pair of sample
+        :param target_img_files: list of target image files, a random of them will be chosen to display
+        """
         def plot_hist(hist, smooth=False):
             import scipy.signal
             color_list = ['r', 'g', 'b']
@@ -95,12 +123,5 @@ class HistMatcher(object):
         plt.show()
 
 
-def main():
-    rgb_files = misc_utils.get_files([r'/media/ei-edl01/data/uab_datasets/Austin/data', 'Original_Tiles'], '*_RGB.tif')
-    target_files = misc_utils.get_files(['/media/ei-edl01/user/bh163/lbnl/dataset'], '*.jpg')
-    hm = HistMatcher(rgb_files)
-    hm.vis_transform_pair(target_files)
-
-
 if __name__ == '__main__':
-    main()
+    pass
