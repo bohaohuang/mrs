@@ -227,6 +227,7 @@ def load(model, model_path, relax_load=False, disable_parallel=False, optm=None,
             model.encoder = DataParallelPassThrough(model.encoder, [gpu, ])
             model.decoder = DataParallelPassThrough(model.decoder, [gpu, ])
             model.load_state_dict(checkpoint['state_dict'])
+            print('Loaded model with parallel auto-matching!')
     except KeyError:
         # FIXME this is a adhoc fix to be compatible with RSMoCo
         pretrained_state = flex_load(model.state_dict(), checkpoint['model'], relax_load, disable_parallel)

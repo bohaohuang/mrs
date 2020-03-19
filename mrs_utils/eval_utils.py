@@ -311,9 +311,8 @@ def read_results(result_name, regex=None, sum_results=False, delta=1e-6, class_n
         class_names = update_results(results, name, ious, class_names)
     if regex:
         comb_res = None
-        pattern = re.compile(regex)
         for key, val in results.items():
-            if pattern.match(key):
+            if re.search(regex, key):
                 comb_res = combine_results(comb_res, val)
         return summarize_results(comb_res)
     elif sum_results:
