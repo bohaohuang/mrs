@@ -419,12 +419,12 @@ def resnext50_32x4d(pretrained=False, strides=(2, 2, 2, 1, 1), inter_features=Fa
     return model
 
 
-def resnext101_32x4d(pretrained=False, strides=(2, 2, 2, 1, 1), inter_features=False):
+def resnext101_32x8d(pretrained=False, strides=(2, 2, 2, 1, 1), inter_features=False):
     model = ResNet(Bottleneck, [3, 4, 23, 3], strides=strides, inter_features=inter_features, groups=32,
                    width_per_group=8)
     if pretrained:
         pretrained_state = network_utils.flex_load(model.state_dict(),
-                                                   model_zoo.load_url(model_urls['resnext50_32x4d']), verb=False)
+                                                   model_zoo.load_url(model_urls['resnext50_32x8d']), verb=False)
         model.load_state_dict(pretrained_state, strict=False)
     return model
 
