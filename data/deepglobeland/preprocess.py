@@ -139,7 +139,7 @@ def get_stats(img_dir, dirs=('land-train/land-train',), is_test=False):
     return np.stack([ds_mean, ds_std], axis=0)
 
 
-def get_stats_pb(img_dir=r'/hdd/mrs/deepglobe/14p_pd0_ol0/patches'):
+def get_stats_pb(img_dir):
     val = process_block.ValueComputeProcess(
         DS_NAME, os.path.join(os.path.dirname(__file__), '../stats/builtin'),
         os.path.join(os.path.dirname(__file__), '../stats/builtin/{}.npy').format(DS_NAME), func=get_stats).\

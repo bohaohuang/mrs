@@ -105,7 +105,7 @@ def get_images(data_dir, valid_percent=0.14):
     return rgb_files, gt_files
 
 
-def get_stats_pb(img_dir=r'/hdd/mrs/deepglobe/14p_pd0_ol0/patches'):
+def get_stats_pb(img_dir):
     val = process_block.ValueComputeProcess(DS_NAME, os.path.join(os.path.dirname(__file__), '../stats/builtin'),
                                             os.path.join(os.path.dirname(__file__),
                                                          '../stats/builtin/{}.npy'.format(DS_NAME)),
