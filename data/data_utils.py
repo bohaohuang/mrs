@@ -99,6 +99,28 @@ def change_channel_order(data, to_channel_last=True):
             return np.rollaxis(data, 3, 1)
 
 
+def inv_norm(rgb, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.255), to_numpy=True):
+    """
+    Inverse normalize the rgb imagery
+    :param rgb: the rgb imagery to be inv-normalized
+    :param mean: the mean used to normalize the imagery
+    :param std: the std used to normalize the imagery
+    :param to_numpy: if True, cast the torch tensor to numpy array
+    :return:
+    """
+    mean = [-a / b for a, b in zip(mean, std)]
+    std = [1 / a for a in std]
+    inv_normalize = transforms.Normalize(
+        mean=mean,
+        std=std
+    )
+    rgb = inv_normalize(rgb)
+    if to_numpy:
+        return rgb.cpu().numpy()
+    else:
+        return rgb
+
+
 def visualize(rgb, gt, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.255)):
     """
     Visualize a given pair of image and mask normalized tensors
@@ -108,14 +130,8 @@ def visualize(rgb, gt, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.255)):
     :param std: the std used to normalize the input
     :return:
     """
-    mean = [-a/b for a, b in zip(mean, std)]
-    std = [1/a for a in std]
-    inv_normalize = transforms.Normalize(
-        mean=mean,
-        std=std
-    )
-    rgb = inv_normalize(rgb)
-    rgb, gt = rgb.numpy(), gt.numpy()
+    rgb = inv_norm(rgb, mean, std)
+    gt = gt.numpy()
     rgb = change_channel_order(rgb, True)
     plt.figure(figsize=(10, 6))
     plt.subplot(121)

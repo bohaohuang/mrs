@@ -123,14 +123,14 @@ def make_cmp_mask(lbl, pred, tp_mask_color=(0, 255, 0), fp_mask_color=(255, 0, 0
     return cmp_mask
 
 
-def compare_figures(images, nrows_ncols, show_axis=False, fig_size=(10, 8), show_fig=True,
+def compare_figures(images, nrows_ncols, fig_size=(10, 8), show_axis=False, show_fig=True,
                     title_list=None):
     """
     Show images in grid pattern, link their x and y axis
     :param images: list of images to be displayed
     :param nrows_ncols: a tuple of (n_h, n_w) where n_h is #elements/row and n_w is #elements/col
-    :param show_axis: if True, each subplot will have its axis shown
     :param fig_size: a tuple of figure size
+    :param show_axis: if True, each subplot will have its axis shown
     :param show_fig: if True, plt.show() will be called
     :param title_list: list of title names to be displayed on each sub images
     :return:

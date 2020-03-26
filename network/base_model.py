@@ -183,7 +183,7 @@ class Base(nn.Module):
         return loss_dict
 
     def step_mixed_batch(self, data_loader_ref, data_loader_others, device, optm, phase, criterions, bp_loss_idx=0,
-                         save_image=True, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
+                         save_image=True, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), loss_weights=None):
         """
         This function does one forward and backward path in the training
         Print necessary message
@@ -196,6 +196,16 @@ class Base(nn.Module):
 
         for cnt, dlo in enumerate(data_loader_others):
             data_loader_others[cnt] = infi_loop(dlo)
+
+        # settings
+        if isinstance(bp_loss_idx, int):
+            bp_loss_idx = (bp_loss_idx,)
+        if loss_weights is None:
+            loss_weights = {a: 1.0 for a in bp_loss_idx}
+        else:
+            assert len(loss_weights) == len(bp_loss_idx)
+            loss_weights = [a/sum(loss_weights) for a in loss_weights]
+            loss_weights = {a: b for (a, b) in zip(bp_loss_idx, loss_weights)}
 
         loss_dict = {}
         for img_cnt, (image, label) in enumerate(tqdm(data_loader_ref, desc='{}'.format(phase))):
@@ -220,17 +230,20 @@ class Base(nn.Module):
             # loss
             if self.lbl_margin > 0:
                 label = label[:, self.lbl_margin:-self.lbl_margin, self.lbl_margin:-self.lbl_margin]
+            loss_all = 0
             for c_cnt, c in enumerate(criterions):
                 loss = c(pred, label)
                 if phase == 'train' and c_cnt == bp_loss_idx:
-                    loss.backward()
-                    optm.step()
+                    loss_all += loss_weights[c_cnt] * loss
                 c.update(loss, image.size(0))
+            if phase == 'train':
+                loss_all.backward()
+                optm.step()
 
             if save_image and img_cnt == 0:
                 img_image = image.detach().cpu().numpy()
                 if self.lbl_margin > 0:
-                    img_image = img_image[:,:, self.lbl_margin: -self.lbl_margin, self.lbl_margin: -self.lbl_margin]
+                    img_image = img_image[:, :, self.lbl_margin: -self.lbl_margin, self.lbl_margin: -self.lbl_margin]
                 lbl_image = label.cpu().numpy()
                 pred_image = pred.detach().cpu().numpy()
                 banner = vis_utils.make_tb_image(img_image, lbl_image, pred_image, self.n_class, mean, std)
