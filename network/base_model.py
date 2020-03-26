@@ -233,7 +233,7 @@ class Base(nn.Module):
             loss_all = 0
             for c_cnt, c in enumerate(criterions):
                 loss = c(pred, label)
-                if phase == 'train' and c_cnt == bp_loss_idx:
+                if phase == 'train' and c_cnt in bp_loss_idx:
                     loss_all += loss_weights[c_cnt] * loss
                 c.update(loss, image.size(0))
             if phase == 'train':
