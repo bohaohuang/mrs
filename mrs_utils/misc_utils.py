@@ -435,7 +435,7 @@ def historical_process_flag(flags):
     elif isinstance(flags['trainer']['further_train'], str):
         flags['trainer']['further_train'] = eval(flags['trainer']['further_train'])
     if 'use_emau' not in flags:
-        flags['use_emau'] = True
+        flags['use_emau'] = False
     elif isinstance(flags['use_emau'], str):
         flags['use_emau'] = eval(flags['use_emau'])
     return flags
