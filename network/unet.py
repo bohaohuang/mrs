@@ -6,18 +6,16 @@
 # Built-in
 
 # Libs
-from tqdm import tqdm
 
 # Pytorch
 import torch
 from torch import nn
-from torch.autograd import Variable
 from torch.nn import functional as F
 
 # Own modules
-from network import base_model
+from network import base_model, emau
 from network.backbones import encoders
-from mrs_utils import misc_utils, vis_utils
+from mrs_utils import misc_utils
 
 
 class ConvDownSample(nn.Module):
@@ -124,7 +122,7 @@ class UNet(base_model.Base):
     """
     This module is the original Unet defined in paper
     """
-    def __init__(self, n_class, sfn=32, encoder_name='base', pretrained=True, aux_loss=False):
+    def __init__(self, n_class, sfn=32, encoder_name='base', pretrained=True, aux_loss=False, use_emau=False):
         """
         Initialize the Unet model
         :param sfn: the start filter number, following blocks have n*sfn number of filters
@@ -132,11 +130,13 @@ class UNet(base_model.Base):
         :param encoder_name: name of the encoder, could be 'base', 'vgg16'
         :param pretrained: if True, load the weights from pretrained model
         :param aux_loss: if True, will create a classification branch for extracted features
+        :param use_emau: if True or int, the an EMAU will be appended at the end of the encoder
         """
         super(UNet, self).__init__()
         self.n_class = n_class
         self.encoder_name = misc_utils.stem_string(encoder_name)
         self.aux_loss = aux_loss
+        self.use_emau = use_emau
         if self.encoder_name == 'base':
             self.sfn = sfn
             self.encoder = UnetBaseEncoder(self.sfn)
@@ -166,12 +166,20 @@ class UNet(base_model.Base):
             )
         else:
             self.cls = None
+        if self.use_emau:
+            if isinstance(self.use_emau, int):
+                c = self.use_emau
+            else:
+                c = 64
+            self.encoder.emau = emau.EMAU(self.decode_in_chans[0], c)
         self.decoder = UnetDecoder(self.decode_in_chans, self.decode_out_chans, self.margins, self.n_class,
                                    conv_chan, pad, up_sample)
 
     def forward(self, x):
         x = self.encoder(x)
         ftr, layers = x[0], x[1:]
+        if self.use_emau:
+            ftr, _ = self.encoder.emau(ftr)
         pred = self.decoder(ftr, layers)
         if self.aux_loss:
             aux = F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1))

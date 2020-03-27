@@ -13,7 +13,7 @@ import torch.nn.functional as F
 from torch import nn
 
 # Own modules
-from network import base_model
+from network import base_model, emau
 from network.backbones import encoders
 
 
@@ -134,12 +134,19 @@ class DeepLabV3(base_model.Base):
     This module implements the DeepLabV3 in paper https://arxiv.org/pdf/1802.02611.pdf
     """
     def __init__(self, n_class, encoder_name='resnet34', pretrained=True, outchan=256, dropout_rate=0.5,
-                 aux_loss=False):
+                 aux_loss=False, use_emau=False):
         super(DeepLabV3, self).__init__()
         self.n_class = n_class
         self.aux_loss = aux_loss
+        self.use_emau = use_emau
         self.encoder_name = encoder_name
         self.encoder = encoders.models(self.encoder_name, pretrained, (2, 2, 2, 2, 1), True)
+        if self.use_emau:
+            if isinstance(self.use_emau, int):
+                c = self.use_emau
+            else:
+                c = 64
+            self.encoder.emau = emau.EMAU(self.encoder.chans[0], c)
         self.decoder = DeepLabV3Decoder(n_class, self.encoder.chans[0], self.encoder.chans[3], outchan, dropout_rate)
         if self.aux_loss:
             self.cls = nn.Sequential(
@@ -154,6 +161,8 @@ class DeepLabV3(base_model.Base):
         input_size = x.size()[2:]
         x = self.encoder(x)
         ftr, layer = x[0], x[3]
+        if self.use_emau:
+            ftr, _ = self.encoder.emau(ftr)
         pred = self.decoder(ftr, layer, input_size)
         if self.aux_loss:
             aux = F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1))
@@ -163,7 +172,7 @@ class DeepLabV3(base_model.Base):
 
 
 if __name__ == '__main__':
-    net = DeepLabV3(2, encoder_name='resnet101', aux_loss=True)
+    net = DeepLabV3(2, encoder_name='resnet101', aux_loss=True, use_emau=True)
     x = torch.randn((5, 3, 512, 512))
     y, pred = net(x)
     print(y.shape, pred.shape)
