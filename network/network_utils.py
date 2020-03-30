@@ -153,7 +153,8 @@ def flex_load(model_dict, ckpt_dict, relax_load=False, disable_parallel=False, v
         if verb:
             print('Try loading without those parameters')
         return pretrained_state
-    elif disable_parallel or 'module' in [a for a in ckpt_params if a not in self_params][0]:
+    elif disable_parallel or (len([a for a in ckpt_params if a not in self_params]) > 0 and
+                              'module' in [a for a in ckpt_params if a not in self_params][0]):
         pretrained_state = {k: v for k, v in ckpt_dict.items() if k.replace('module.', '') in model_dict and
                             v.size() == model_dict[k.replace('module.', '')].size()}
         if len(pretrained_state) == 0:
