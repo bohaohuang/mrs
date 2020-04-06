@@ -62,6 +62,18 @@ class LossClass(nn.Module):
         return self.loss / self.cnt
 
 
+class LossMeter(LossClass):
+    """
+    A meter for calculated loss
+    """
+    def __init__(self, name_ext=''):
+        super(LossMeter, self).__init__()
+        self.name = 'meter_' + name_ext
+
+    def forward(self, pred, lbl):
+        pass
+
+
 class CrossEntropyLoss(LossClass):
     """
     Cross entropy loss function used in training
@@ -125,36 +137,6 @@ class SoftIoULoss(LossClass):
         cardinality = torch.sum(probas + true_1_hot, dims)
         dice_loss = (2. * intersection / (cardinality + self.delta)).mean()
         return (1 - dice_loss)
-
-
-'''class IoU(LossClass):
-    """
-    IoU metric that is not differentiable in training
-    """
-    def __init__(self, delta=1e-7):
-        super(IoU, self).__init__()
-        self.name = 'IoU'
-        self.numerator = 0
-        self.denominator = 0
-        self.delta = delta
-
-    def forward(self, pred, lbl):
-        truth = lbl.flatten().float()
-        _, pred = torch.max(pred[:, :, :, :], 1)
-        pred = pred.flatten().float()
-        intersect = truth * pred
-        return torch.sum(intersect == 1), torch.sum(truth + pred >= 1)
-
-    def update(self, loss, size):
-        self.numerator += loss[0].item() * size
-        self.denominator += loss[1].item() * size
-
-    def reset(self):
-        self.numerator = 0
-        self.denominator = 0
-
-    def get_loss(self):
-        return self.numerator / (self.denominator + self.delta)'''
 
 
 class IoU(LossClass):
