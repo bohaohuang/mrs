@@ -118,14 +118,16 @@ def train_model(args, device, parallel):
             else:
                 model.eval()
 
+            # TODO align aux loss and normal train
             if args['optimizer']['aux_loss']:
                 loss_dict = model.step_aux(train_val_loaders[phase], device, optm, phase, criterions, cls_criterion,
                                            args['optimizer']['aux_loss_weight'], eval(args['trainer']['bp_loss_idx']),
-                                           True, mean, std, loss_weights=eval(args['trainer']['loss_weights']))
+                                           True, mean, std, loss_weights=eval(args['trainer']['loss_weights']),
+                                           use_emau=args['use_emau'])
             else:
                 loss_dict = model.step(train_val_loaders[phase], device, optm, phase, criterions,
                                        eval(args['trainer']['bp_loss_idx']), True, mean, std,
-                                       loss_weights=eval(args['trainer']['loss_weights']))
+                                       loss_weights=eval(args['trainer']['loss_weights']), use_emau=args['use_emau'])
             network_utils.write_and_print(writer, phase, epoch, int(args['trainer']['epochs']), loss_dict, start_time)
 
         scheduler.step()

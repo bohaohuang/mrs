@@ -112,12 +112,20 @@ class PSPNet(base_model.Base):
     def forward(self, x):
         ftr = self.encoder(x)
         if self.use_emau:
-            ftr, _ = self.encoder.emau(ftr)
-        pred = self.decoder(ftr)
+            ftr, mu = self.encoder.emau(ftr)
+            pred = self.decoder(ftr)
+            return pred, mu
         if self.aux_loss:
+            if self.use_emau:
+                ftr, mu = self.encoder.emau(ftr)
+            pred = self.decoder(ftr)
             aux = F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1))
-            return pred, self.cls(aux)
+            if self.use_emau:
+                return pred, mu, self.cls(aux)
+            else:
+                return pred, self.cls(aux)
         else:
+            pred = self.decoder(ftr)
             return pred
 
 

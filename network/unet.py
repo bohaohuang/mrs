@@ -179,12 +179,20 @@ class UNet(base_model.Base):
         x = self.encoder(x)
         ftr, layers = x[0], x[1:]
         if self.use_emau:
-            ftr, _ = self.encoder.emau(ftr)
-        pred = self.decoder(ftr, layers)
+            ftr, mu = self.encoder.emau(ftr)
+            pred = self.decoder(ftr, layers)
+            return pred, mu
         if self.aux_loss:
+            if self.use_emau:
+                ftr, mu = self.encoder.emau(ftr)
+            pred = self.decoder(ftr, layers)
             aux = F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1))
-            return pred, self.cls(aux)
+            if self.use_emau:
+                return pred, mu, self.cls(aux)
+            else:
+                return pred, self.cls(aux)
         else:
+            pred = self.decoder(ftr, layers)
             return pred
 
 

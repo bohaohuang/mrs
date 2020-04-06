@@ -58,13 +58,20 @@ class Base(nn.Module):
         :param kwargs:
         :return:
         """
-        return [
-            {'params': self.encoder.parameters(), 'lr': learn_rate[0]},
-            {'params': self.decoder.parameters(), 'lr': learn_rate[1]}
-        ]
+        if 'emau' in kwargs and kwargs['emau']:
+            return [
+                {'params': self.encoder.parameters(), 'lr': learn_rate[0]},
+                {'params': self.decoder.parameters(), 'lr': learn_rate[1]},
+                {'params': self.encoder.emau.parameters(), 'lr': learn_rate[1]}
+            ]
+        else:
+            return [
+                {'params': self.encoder.parameters(), 'lr': learn_rate[0]},
+                {'params': self.decoder.parameters(), 'lr': learn_rate[1]}
+            ]
 
     def step(self, data_loader, device, optm, phase, criterions, bp_loss_idx=0, save_image=True,
-             mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), loss_weights=None):
+             mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), loss_weights=None, use_emau=False):
         """
         This function does one forward and backward path in the training
         Print necessary message
@@ -88,10 +95,16 @@ class Base(nn.Module):
 
             # forward step
             if phase == 'train':
-                pred = self.forward(image)
+                if use_emau:
+                    pred, mu = self.forward(image)
+                else:
+                    pred = self.forward(image)
             else:
                 with torch.autograd.no_grad():
-                    pred = self.forward(image)
+                    if use_emau:
+                        pred, mu = self.forward(image)
+                    else:
+                        pred = self.forward(image)
 
             # loss
             # crop margin if necessary & reduce channel dimension
@@ -104,6 +117,12 @@ class Base(nn.Module):
                     loss_all += loss_weights[c_cnt] * loss
                 c.update(loss, image.size(0))
             if phase == 'train':
+                if use_emau:
+                    with torch.no_grad():
+                        mu = mu.mean(dim=0, keepdim=True)
+                        momentum = 0.9
+                        self.encoder.emau.mu *= momentum
+                        self.encoder.emau.mu += mu * (1 - momentum)
                 loss_all.backward()
                 optm.step()
 
@@ -121,7 +140,8 @@ class Base(nn.Module):
         return loss_dict
 
     def step_aux(self, data_loader, device, optm, phase, criterions, cls_criterion, cls_weight, bp_loss_idx=0,
-                 save_image=True, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), loss_weights=None):
+                 save_image=True, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), loss_weights=None,
+                 use_emau=False):
         """
         This function does one forward and backward path in the training
         Print necessary message
@@ -146,10 +166,16 @@ class Base(nn.Module):
 
             # forward step
             if phase == 'train':
-                pred, cls_hat = self.forward(image)
+                if use_emau:
+                    pred, mu, cls_hat = self.forward(image)
+                else:
+                    pred, cls_hat = self.forward(image)
             else:
                 with torch.autograd.no_grad():
-                    pred, cls_hat = self.forward(image)
+                    if use_emau:
+                        pred, mu, cls_hat = self.forward(image)
+                    else:
+                        pred, cls_hat = self.forward(image)
 
             # loss
             # crop margin if necessary & reduce channel dimension
@@ -165,6 +191,12 @@ class Base(nn.Module):
             loss_all += cls_weight * loss
             cls_criterion.update(loss, image.size(0))
             if phase == 'train':
+                if use_emau:
+                    with torch.no_grad():
+                        mu = mu.mean(dim=0, keepdim=True)
+                        momentum = 0.9
+                        self.encoder.emau.mu *= momentum
+                        self.encoder.emau.mu += mu * (1 - momentum)
                 loss_all.backward()
                 optm.step()
 
@@ -184,7 +216,8 @@ class Base(nn.Module):
         return loss_dict
 
     def step_mixed_batch(self, data_loader_ref, data_loader_others, device, optm, phase, criterions, bp_loss_idx=0,
-                         save_image=True, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), loss_weights=None):
+                         save_image=True, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), loss_weights=None,
+                         use_emau=False):
         """
         This function does one forward and backward path in the training
         Print necessary message
@@ -219,10 +252,16 @@ class Base(nn.Module):
 
             # forward step
             if phase == 'train':
-                pred = self.forward(image)
+                if use_emau:
+                    pred, mu = self.forward(image)
+                else:
+                    pred = self.forward(image)
             else:
                 with torch.autograd.no_grad():
-                    pred = self.forward(image)
+                    if use_emau:
+                        pred, mu = self.forward(image)
+                    else:
+                        pred = self.forward(image)
 
             # loss
             if self.lbl_margin > 0:
@@ -234,6 +273,12 @@ class Base(nn.Module):
                     loss_all += loss_weights[c_cnt] * loss
                 c.update(loss, image.size(0))
             if phase == 'train':
+                if use_emau:
+                    with torch.no_grad():
+                        mu = mu.mean(dim=0, keepdim=True)
+                        momentum = 0.9
+                        self.encoder.emau.mu *= momentum
+                        self.encoder.emau.mu += mu * (1 - momentum)
                 loss_all.backward()
                 optm.step()
 
