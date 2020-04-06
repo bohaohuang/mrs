@@ -16,19 +16,23 @@ from torch.utils import data
 from mrs_utils import misc_utils
 
 
-def get_file_paths(parent_path, file_list):
+def get_file_paths(parent_path, file_list, with_label=True):
     """
     Parse the paths into absolute paths
     :param parent_path: the parent paths of all the data files
     :param file_list: the list of files
+    :param with_label: if True, the label files will also be returned
     :return:
     """
     img_list = []
     lbl_list = []
     for fl in file_list:
-        img_filename, lbl_filename = [os.path.join(parent_path, a) for a in fl.strip().split(' ')[:2]]
+        if with_label:
+            img_filename, lbl_filename = [os.path.join(parent_path, a) for a in fl.strip().split(' ')[:2]]
+            lbl_list.append(lbl_filename)
+        else:
+            img_filename = [os.path.join(parent_path, a) for a in fl.strip().split(' ')[:1]][0]
         img_list.append(img_filename)
-        lbl_list.append(lbl_filename)
     return img_list, lbl_list
 
 
@@ -43,7 +47,7 @@ def one_hot(class_n, x):
 
 
 class RSDataLoader(data.Dataset):
-    def __init__(self, parent_path, file_list, transforms=None, n_class=0):
+    def __init__(self, parent_path, file_list, transforms=None, n_class=0, with_label=True):
         """
         A data reader for the remote sensing dataset
         The dataset storage structure should be like
@@ -57,10 +61,12 @@ class RSDataLoader(data.Dataset):
         :param file_list: a text file where each row contains rgb and gt files separated by space
         :param transforms: albumentation transforms
         :param n_class: if greater than 0, will yield a #classes dimension vector where 1 indicates corresponding class exist
+        :param with_label: if True, label files will be read, otherwise label files will be ignored
         """
+        self.with_label = with_label
         try:
             file_list = misc_utils.load_file(file_list)
-            self.img_list, self.lbl_list = get_file_paths(parent_path, file_list)
+            self.img_list, self.lbl_list = get_file_paths(parent_path, file_list, self.with_label)
         except OSError:
             file_list = eval(file_list)
             parent_path = eval(parent_path)
@@ -77,21 +83,42 @@ class RSDataLoader(data.Dataset):
 
     def __getitem__(self, index):
         rgb = misc_utils.load_file(self.img_list[index])
-        lbl = misc_utils.load_file(self.lbl_list[index])
+        if self.with_label:
+            lbl = misc_utils.load_file(self.lbl_list[index])
         if self.transforms:
             for tsfm in self.transforms:
-                tsfm_image = tsfm(image=rgb, mask=lbl)
-                rgb = tsfm_image['image']
-                lbl = tsfm_image['mask']
+                if self.with_label:
+                    tsfm_image = tsfm(image=rgb, mask=lbl)
+                    rgb = tsfm_image['image']
+                    lbl = tsfm_image['mask']
+                else:
+                    tsfm_image = tsfm(image=rgb)
+                    rgb = tsfm_image['image']
         if self.n_class:
             if len(lbl.shape) == 2:
                 cls = int(torch.mean(lbl.type(torch.float)) > 0)
                 cls = one_hot(self.n_class, cls).type(torch.float)
             else:
                 cls = (torch.sum(lbl, dim=-1) > 0).type(torch.float)
-            return rgb, lbl, cls
+            if self.with_label:
+                return rgb, lbl, cls
+            else:
+                return rgb, cls
         else:
-            return rgb, lbl
+            if self.with_label:
+                return rgb, lbl
+            else:
+                return rgb
+
+
+def infi_loop_loader(dl):
+    """
+    An iterator that reloads after reaching to the end
+    :param dl: data loader
+    :return: an endless iterator
+    """
+    while True:
+        for x in dl: yield x
 
 
 class HDF5DataLoader(data.Dataset):

@@ -15,6 +15,7 @@ from torch import nn
 from torch.autograd import Variable
 
 # Own modules
+from data import data_loader
 from mrs_utils import vis_utils
 from network import network_utils
 
@@ -190,12 +191,8 @@ class Base(nn.Module):
         :param kwargs:
         :return:
         """
-        def infi_loop(dl):
-            while True:
-                for x in dl: yield x
-
         for cnt, dlo in enumerate(data_loader_others):
-            data_loader_others[cnt] = infi_loop(dlo)
+            data_loader_others[cnt] = data_loader.infi_loop_loader(dlo)
 
         # settings
         if isinstance(bp_loss_idx, int):
