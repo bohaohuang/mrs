@@ -176,24 +176,16 @@ class UNet(base_model.Base):
                                    conv_chan, pad, up_sample)
 
     def forward(self, x):
+        output_dict = dict()
         x = self.encoder(x)
         ftr, layers = x[0], x[1:]
         if self.use_emau:
-            ftr, mu = self.encoder.emau(ftr)
-            pred = self.decoder(ftr, layers)
-            return pred, mu
+            ftr, output_dict['mu'] = self.encoder.emau(ftr)
         if self.aux_loss:
-            if self.use_emau:
-                ftr, mu = self.encoder.emau(ftr)
-            pred = self.decoder(ftr, layers)
-            aux = F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1))
-            if self.use_emau:
-                return pred, mu, self.cls(aux)
-            else:
-                return pred, self.cls(aux)
-        else:
-            pred = self.decoder(ftr, layers)
-            return pred
+            output_dict['aux'] = self.cls(F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1)))
+        pred = self.decoder(ftr, layers)
+        output_dict['pred'] = pred
+        return output_dict
 
 
 if __name__ == '__main__':

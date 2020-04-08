@@ -15,15 +15,15 @@ from tensorboardX import SummaryWriter
 
 # Pytorch
 import torch
-from torch import nn, optim
+from torch import optim
 from torch.utils.data import DataLoader
 
 # Own modules
 from data import data_loader
-from mrs_utils import misc_utils
 from network import network_utils, network_io
+from mrs_utils import misc_utils, metric_utils
 
-CONFIG_FILE = 'temp_config.json'
+CONFIG_FILE = 'temp_unit_test_config.json'
 
 
 def read_config():
@@ -49,10 +49,7 @@ def train_model(args, device, parallel):
     model = network_io.create_model(args)
     log_dir = os.path.join(args['save_dir'], 'log')
     writer = SummaryWriter(log_dir=log_dir)
-    try:
-        writer.add_graph(model, torch.rand(1, 3, *eval(args['dataset']['input_size'])))
-    except (RuntimeError, TypeError, AttributeError):
-        print('Warning: could not write graph to tensorboard, this might be a bug in tensorboardX')
+    # TODO add write_graph back, probably need to swith to tensorboard in pytorch
     if parallel:
         model.encoder = network_utils.DataParallelPassThrough(model.encoder)
         model.decoder = network_utils.DataParallelPassThrough(model.decoder)
@@ -65,8 +62,10 @@ def train_model(args, device, parallel):
     # make optimizer
     optm = network_io.create_optimizer(args['optimizer']['name'], train_params, args['optimizer']['learn_rate_encoder'])
     criterions = network_io.create_loss(args, device=device)
+    cls_criterion = None
+    with_aux = False
     if args['optimizer']['aux_loss']:
-        from mrs_utils import metric_utils
+        with_aux = True
         cls_criterion = metric_utils.BCEWithLogitLoss(device, eval(args['trainer']['class_weight']))
     scheduler = optim.lr_scheduler.MultiStepLR(optm, milestones=eval(args['optimizer']['decay_step']),
                                                gamma=args['optimizer']['decay_rate'])
@@ -92,20 +91,28 @@ def train_model(args, device, parallel):
         c.to(device)
 
     # make data loader
+    ds_cfgs = [a for a in sorted(args.keys()) if 'dataset' in a]
+    assert ds_cfgs[0] == 'dataset'
+
+    train_val_loaders = {'train': [], 'valid': []}
+    for ds_cfg in ds_cfgs:
+        mean, std = network_io.get_dataset_stats(args[ds_cfg]['ds_name'], args[ds_cfg]['data_dir'],
+                                                 mean_val=(eval(args[ds_cfg]['mean']), eval(args[ds_cfg]['std'])))
+        tsfm_train, tsfm_valid = network_io.create_tsfm(args, mean, std)
+        train_loader = DataLoader(data_loader.get_loader(
+            args[ds_cfg]['data_dir'], args[ds_cfg]['train_file'], transforms=tsfm_train,
+            n_class=args[ds_cfg]['class_num'], with_aux=with_aux),
+            batch_size=int(args[ds_cfg]['batch_size']), shuffle=True, num_workers=int(args['dataset']['num_workers']),
+            drop_last=True)
+        valid_loader = DataLoader(data_loader.get_loader(
+            args[ds_cfg]['data_dir'], args[ds_cfg]['valid_file'], transforms=tsfm_valid,
+            n_class=args[ds_cfg]['class_num'], with_aux=with_aux),
+            batch_size=int(args[ds_cfg]['batch_size']), shuffle=False, num_workers=int(args[ds_cfg]['num_workers']))
+        print('Training model on the {} dataset'.format(args[ds_cfg]['ds_name']))
+        train_val_loaders['train'].append(train_loader)
+        train_val_loaders['valid'].append(valid_loader)
     mean, std = network_io.get_dataset_stats(args['dataset']['ds_name'], args['dataset']['data_dir'],
                                              mean_val=(eval(args['dataset']['mean']), eval(args['dataset']['std'])))
-    tsfm_train, tsfm_valid = network_io.create_tsfm(args, mean, std)
-    train_loader = DataLoader(data_loader.get_loader(
-        args['dataset']['data_dir'], args['dataset']['train_file'], transforms=tsfm_train,
-        aux_loss=args['optimizer']['aux_loss']),
-        batch_size=int(args['dataset']['batch_size']), shuffle=True, num_workers=int(args['dataset']['num_workers']),
-        drop_last=True)
-    valid_loader = DataLoader(data_loader.get_loader(
-        args['dataset']['data_dir'], args['dataset']['valid_file'], transforms=tsfm_valid,
-        aux_loss=args['optimizer']['aux_loss']),
-        batch_size=int(args['dataset']['batch_size']), shuffle=False, num_workers=int(args['dataset']['num_workers']))
-    print('Training model on the {} dataset'.format(args['dataset']['ds_name']))
-    train_val_loaders = {'train': train_loader, 'valid': valid_loader}
 
     # train the model
     loss_dict = {}
@@ -119,15 +126,10 @@ def train_model(args, device, parallel):
                 model.eval()
 
             # TODO align aux loss and normal train
-            if args['optimizer']['aux_loss']:
-                loss_dict = model.step_aux(train_val_loaders[phase], device, optm, phase, criterions, cls_criterion,
-                                           args['optimizer']['aux_loss_weight'], eval(args['trainer']['bp_loss_idx']),
-                                           True, mean, std, loss_weights=eval(args['trainer']['loss_weights']),
-                                           use_emau=args['use_emau'])
-            else:
-                loss_dict = model.step(train_val_loaders[phase], device, optm, phase, criterions,
-                                       eval(args['trainer']['bp_loss_idx']), True, mean, std,
-                                       loss_weights=eval(args['trainer']['loss_weights']), use_emau=args['use_emau'])
+            loss_dict = model.step(train_val_loaders[phase], device, optm, phase, criterions,
+                                   eval(args['trainer']['bp_loss_idx']), True, mean, std,
+                                   loss_weights=eval(args['trainer']['loss_weights']), use_emau=args['use_emau'],
+                                   cls_criterion=cls_criterion, cls_weight=args['optimizer']['aux_loss_weight'])
             network_utils.write_and_print(writer, phase, epoch, int(args['trainer']['epochs']), loss_dict, start_time)
 
         scheduler.step()

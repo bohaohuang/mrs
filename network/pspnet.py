@@ -110,27 +110,20 @@ class PSPNet(base_model.Base):
             self.cls = None
 
     def forward(self, x):
+        output_dict = dict()
         ftr = self.encoder(x)
         if self.use_emau:
-            ftr, mu = self.encoder.emau(ftr)
-            pred = self.decoder(ftr)
-            return pred, mu
+            ftr, output_dict['mu'] = self.encoder.emau(ftr)
         if self.aux_loss:
-            if self.use_emau:
-                ftr, mu = self.encoder.emau(ftr)
-            pred = self.decoder(ftr)
-            aux = F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1))
-            if self.use_emau:
-                return pred, mu, self.cls(aux)
-            else:
-                return pred, self.cls(aux)
-        else:
-            pred = self.decoder(ftr)
-            return pred
+            output_dict['aux'] = self.cls(F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1)))
+        pred = self.decoder(ftr)
+        output_dict['pred'] = pred
+        return output_dict
 
 
 if __name__ == '__main__':
     vgg16 = PSPNet(2, encoder_name='vgg16_bn', aux_loss=True, use_emau=True)
     x = torch.randn((5, 3, 512, 512))
-    y, cls = vgg16(x)
-    print(y.shape, cls.shape)
+    output_dict = vgg16(x)
+    y, cls, mu = output_dict['pred'], output_dict['aux'], output_dict['mu']
+    print(y.shape, cls.shape, mu.shape)

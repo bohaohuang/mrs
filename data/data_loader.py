@@ -47,7 +47,7 @@ def one_hot(class_n, x):
 
 
 class RSDataLoader(data.Dataset):
-    def __init__(self, parent_path, file_list, transforms=None, n_class=0, with_label=True):
+    def __init__(self, parent_path, file_list, transforms=None, n_class=2, with_label=True, with_aux=False):
         """
         A data reader for the remote sensing dataset
         The dataset storage structure should be like
@@ -62,6 +62,7 @@ class RSDataLoader(data.Dataset):
         :param transforms: albumentation transforms
         :param n_class: if greater than 0, will yield a #classes dimension vector where 1 indicates corresponding class exist
         :param with_label: if True, label files will be read, otherwise label files will be ignored
+        :param with_aux: if True, auxiliary classification label will be returned
         """
         self.with_label = with_label
         try:
@@ -77,38 +78,29 @@ class RSDataLoader(data.Dataset):
                 self.lbl_list.extend(lbl_list)
         self.transforms = transforms
         self.n_class = n_class
+        self.with_aux = with_aux
 
     def __len__(self):
         return len(self.img_list)
 
     def __getitem__(self, index):
-        rgb = misc_utils.load_file(self.img_list[index])
+        output_dict = dict()
+        output_dict['image'] = misc_utils.load_file(self.img_list[index])
         if self.with_label:
-            lbl = misc_utils.load_file(self.lbl_list[index])
+            output_dict['mask'] = misc_utils.load_file(self.lbl_list[index])
         if self.transforms:
             for tsfm in self.transforms:
-                if self.with_label:
-                    tsfm_image = tsfm(image=rgb, mask=lbl)
-                    rgb = tsfm_image['image']
-                    lbl = tsfm_image['mask']
-                else:
-                    tsfm_image = tsfm(image=rgb)
-                    rgb = tsfm_image['image']
-        if self.n_class:
-            if len(lbl.shape) == 2:
-                cls = int(torch.mean(lbl.type(torch.float)) > 0)
+                tsfm_image = tsfm(**output_dict)
+                for key, val in tsfm_image.items():
+                    output_dict[key] = val
+        if self.with_aux:
+            if len(output_dict['mask'].shape) == 2:
+                cls = int(torch.mean(output_dict['mask'].type(torch.float)) > 0)
                 cls = one_hot(self.n_class, cls).type(torch.float)
             else:
-                cls = (torch.sum(lbl, dim=-1) > 0).type(torch.float)
-            if self.with_label:
-                return rgb, lbl, cls
-            else:
-                return rgb, cls
-        else:
-            if self.with_label:
-                return rgb, lbl
-            else:
-                return rgb
+                cls = (torch.sum(output_dict['mask'], dim=-1) > 0).type(torch.float)
+            output_dict['cls'] = cls
+        return output_dict
 
 
 def infi_loop_loader(dl):
@@ -163,7 +155,7 @@ class HDF5DataLoader(data.Dataset):
             return rgb, lbl
 
 
-def get_loader(data_path, file_name, transforms=None, aux_loss=0):
+def get_loader(data_path, file_name, transforms=None, n_class=2, with_aux=False):
     """
     Get the appropriate loader with the given file type
     :param data_path: path to a preprocessed remote sensing dataset
@@ -173,12 +165,12 @@ def get_loader(data_path, file_name, transforms=None, aux_loss=0):
     :return: the corresponding loader
     """
     if file_name[-3:] == 'txt':
-        return RSDataLoader(data_path, file_name, transforms, aux_loss)
+        return RSDataLoader(data_path, file_name, transforms, n_class, with_aux=with_aux)
     elif file_name[-4:] == 'hdf5':
-        return HDF5DataLoader(data_path, file_name, transforms, aux_loss)
+        return HDF5DataLoader(data_path, file_name, transforms, n_class)
     elif file_name[-1] == ']':
         # multi dataset
-        return RSDataLoader(data_path, file_name, transforms, aux_loss)
+        return RSDataLoader(data_path, file_name, transforms, n_class, with_aux=with_aux)
     else:
         raise NotImplementedError('File extension {} is not supportted yet'.format(os.path.splitext(file_name))[-1])
 
@@ -209,20 +201,15 @@ class MixedBatchSampler(data.sampler.Sampler):
 
 
 if __name__ == '__main__':
+    from data import data_utils
     import albumentations as A
-
-    tsfms = [A.RandomCrop(512, 512)]
+    from albumentations.pytorch import ToTensorV2
+    tsfms = [A.RandomCrop(512, 512), ToTensorV2()]
     ds1 = RSDataLoader(r'/hdd/mrs/inria/ps512_pd0_ol0/patches', r'/hdd/mrs/inria/ps512_pd0_ol0/file_list_train_kt.txt', transforms=tsfms, n_class=2)
-    '''ds2 = RSDataLoader(r'/hdd/mrs/synthinel_1/patches', r'/hdd/mrs/synthinel_1/file_list_train.txt', transforms=tsfms)
-    ds3 = RSDataLoader(r'/hdd/mrs/inria/ps512_pd0_ol0/patches', r'/hdd/mrs/inria/ps512_pd0_ol0/file_list_valid_a.txt', transforms=tsfms)
-    ds = data.ConcatDataset([ds1, ds2, ds3])
-    loader = data.DataLoader(ds, sampler=MixedBatchSampler((len(ds1), len(ds2), len(ds3)), (5, 0, 0)), batch_size=5)
 
-    for cnt, (rgb, gt) in enumerate(loader):
+    for cnt, data_dict in enumerate(ds1):
         from mrs_utils import vis_utils
-        vis_utils.compare_figures(rgb, (1, 5), fig_size=(12, 6))'''
-
-    for cnt, (rgb, gt, cls) in enumerate(ds1):
-        from mrs_utils import vis_utils
+        rgb, gt, cls = data_dict['image'], data_dict['mask'], data_dict['cls']
         print(cls)
-        vis_utils.compare_figures([rgb, gt], (1, 2), fig_size=(12, 5))
+        vis_utils.compare_figures([data_utils.change_channel_order(rgb.cpu().numpy()),
+                                   gt.cpu().numpy()], (1, 2), fig_size=(12, 5))

@@ -70,163 +70,15 @@ class Base(nn.Module):
                 {'params': self.decoder.parameters(), 'lr': learn_rate[1]}
             ]
 
-    def step(self, data_loader, device, optm, phase, criterions, bp_loss_idx=0, save_image=True,
-             mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), loss_weights=None, use_emau=False):
+    def step(self, data_loaders, device, optm, phase, criterions, bp_loss_idx=0, save_image=True,
+             mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), loss_weights=None, use_emau=False,
+             cls_criterion=None, cls_weight=0.1):
         """
         This function does one forward and backward path in the training
         Print necessary message
         :param kwargs:
         :return:
         """
-        if isinstance(bp_loss_idx, int):
-            bp_loss_idx = (bp_loss_idx,)
-        if loss_weights is None:
-            loss_weights = {a: 1.0 for a in bp_loss_idx}
-        else:
-            assert len(loss_weights) == len(bp_loss_idx)
-            loss_weights = [a/sum(loss_weights) for a in loss_weights]
-            loss_weights = {a: b for (a, b) in zip(bp_loss_idx, loss_weights)}
-
-        loss_dict = {}
-        for img_cnt, (image, label) in enumerate(tqdm(data_loader, desc='{}'.format(phase))):
-            image = Variable(image, requires_grad=True).to(device)
-            label = Variable(label).long().to(device)
-            optm.zero_grad()
-
-            # forward step
-            if phase == 'train':
-                if use_emau:
-                    pred, mu = self.forward(image)
-                else:
-                    pred = self.forward(image)
-            else:
-                with torch.autograd.no_grad():
-                    if use_emau:
-                        pred, mu = self.forward(image)
-                    else:
-                        pred = self.forward(image)
-
-            # loss
-            # crop margin if necessary & reduce channel dimension
-            if self.lbl_margin > 0:
-                label = label[:, self.lbl_margin:-self.lbl_margin, self.lbl_margin:-self.lbl_margin]
-            loss_all = 0
-            for c_cnt, c in enumerate(criterions):
-                loss = c(pred, label)
-                if phase == 'train' and c_cnt in bp_loss_idx:
-                    loss_all += loss_weights[c_cnt] * loss
-                c.update(loss, image.size(0))
-            if phase == 'train':
-                if use_emau:
-                    with torch.no_grad():
-                        mu = mu.mean(dim=0, keepdim=True)
-                        momentum = 0.9
-                        self.encoder.emau.mu *= momentum
-                        self.encoder.emau.mu += mu * (1 - momentum)
-                loss_all.backward()
-                optm.step()
-
-            if save_image and img_cnt == 0:
-                img_image = image.detach().cpu().numpy()
-                if self.lbl_margin > 0:
-                    img_image = img_image[:, :, self.lbl_margin: -self.lbl_margin, self.lbl_margin: -self.lbl_margin]
-                lbl_image = label.cpu().numpy()
-                pred_image = pred.detach().cpu().numpy()
-                banner = vis_utils.make_tb_image(img_image, lbl_image, pred_image, self.n_class, mean, std)
-                loss_dict['image'] = torch.from_numpy(banner)
-        for c in criterions:
-            loss_dict[c.name] = c.get_loss()
-            c.reset()
-        return loss_dict
-
-    def step_aux(self, data_loader, device, optm, phase, criterions, cls_criterion, cls_weight, bp_loss_idx=0,
-                 save_image=True, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), loss_weights=None,
-                 use_emau=False):
-        """
-        This function does one forward and backward path in the training
-        Print necessary message
-        :param kwargs:
-        :return:
-        """
-        if isinstance(bp_loss_idx, int):
-            bp_loss_idx = (bp_loss_idx,)
-        if loss_weights is None:
-            loss_weights = {a: 1.0 for a in bp_loss_idx}
-        else:
-            assert len(loss_weights) == len(bp_loss_idx)
-            loss_weights = [a/sum(loss_weights) for a in loss_weights]
-            loss_weights = {a: b for (a, b) in zip(bp_loss_idx, loss_weights)}
-
-        loss_dict = {}
-        for img_cnt, (image, label, cls) in enumerate(tqdm(data_loader, desc='{}'.format(phase))):
-            image = Variable(image, requires_grad=True).to(device)
-            label = Variable(label).long().to(device)
-            cls = Variable(cls).to(device)
-            optm.zero_grad()
-
-            # forward step
-            if phase == 'train':
-                if use_emau:
-                    pred, mu, cls_hat = self.forward(image)
-                else:
-                    pred, cls_hat = self.forward(image)
-            else:
-                with torch.autograd.no_grad():
-                    if use_emau:
-                        pred, mu, cls_hat = self.forward(image)
-                    else:
-                        pred, cls_hat = self.forward(image)
-
-            # loss
-            # crop margin if necessary & reduce channel dimension
-            if self.lbl_margin > 0:
-                label = label[:, self.lbl_margin:-self.lbl_margin, self.lbl_margin:-self.lbl_margin]
-            loss_all = 0
-            for c_cnt, c in enumerate(criterions):
-                loss = c(pred, label)
-                if phase == 'train' and c_cnt in bp_loss_idx:
-                    loss_all += loss_weights[c_cnt] * loss
-                c.update(loss, image.size(0))
-            loss = cls_criterion(cls_hat, cls)
-            loss_all += cls_weight * loss
-            cls_criterion.update(loss, image.size(0))
-            if phase == 'train':
-                if use_emau:
-                    with torch.no_grad():
-                        mu = mu.mean(dim=0, keepdim=True)
-                        momentum = 0.9
-                        self.encoder.emau.mu *= momentum
-                        self.encoder.emau.mu += mu * (1 - momentum)
-                loss_all.backward()
-                optm.step()
-
-            if save_image and img_cnt == 0:
-                img_image = image.detach().cpu().numpy()
-                if self.lbl_margin > 0:
-                    img_image = img_image[:, :, self.lbl_margin: -self.lbl_margin, self.lbl_margin: -self.lbl_margin]
-                lbl_image = label.cpu().numpy()
-                pred_image = pred.detach().cpu().numpy()
-                banner = vis_utils.make_tb_image(img_image, lbl_image, pred_image, self.n_class, mean, std)
-                loss_dict['image'] = torch.from_numpy(banner)
-        for c in criterions:
-            loss_dict[c.name] = c.get_loss()
-            c.reset()
-        loss_dict[cls_criterion.name] = cls_criterion.get_loss()
-        cls_criterion.reset()
-        return loss_dict
-
-    def step_mixed_batch(self, data_loader_ref, data_loader_others, device, optm, phase, criterions, bp_loss_idx=0,
-                         save_image=True, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), loss_weights=None,
-                         use_emau=False):
-        """
-        This function does one forward and backward path in the training
-        Print necessary message
-        :param kwargs:
-        :return:
-        """
-        for cnt, dlo in enumerate(data_loader_others):
-            data_loader_others[cnt] = data_loader.infi_loop_loader(dlo)
-
         # settings
         if isinstance(bp_loss_idx, int):
             bp_loss_idx = (bp_loss_idx,)
@@ -236,46 +88,57 @@ class Base(nn.Module):
             assert len(loss_weights) == len(bp_loss_idx)
             loss_weights = [a/sum(loss_weights) for a in loss_weights]
             loss_weights = {a: b for (a, b) in zip(bp_loss_idx, loss_weights)}
+        aux_train = False
+        if cls_criterion is not None:
+            aux_train = True
+
+        # make infi-loop data loader
+        mix_batch = False
+        data_loader_others = []
+        if len(data_loaders) > 1:
+            mix_batch = True
+            for dlo in data_loaders[1:]:
+                data_loader_others.append(data_loader.infi_loop_loader(dlo))
 
         loss_dict = {}
-        for img_cnt, (image, label) in enumerate(tqdm(data_loader_ref, desc='{}'.format(phase))):
-            # load data
-            if phase == 'train':
+        for img_cnt, data_dict in enumerate(tqdm(data_loaders[0], desc='{}'.format(phase))):
+            if mix_batch:
                 for dlo in data_loader_others:
-                    image_other, label_other = next(dlo)
-                    image = torch.cat([image, image_other], dim=0)
-                    label = torch.cat([label, label_other], dim=0)
-            image = Variable(image, requires_grad=True).to(device)
-            label = Variable(label).long().to(device)
+                    data_dict_other = next(dlo)
+                    for key, val in data_dict.items():
+                        data_dict[key] = torch.cat([val, data_dict_other[key]], dim=0)
 
+            image = Variable(data_dict['image'], requires_grad=True).to(device)
+            label = Variable(data_dict['mask']).long().to(device)
+            if aux_train:
+                cls = Variable(data_dict['cls']).to(device)
             optm.zero_grad()
 
             # forward step
             if phase == 'train':
-                if use_emau:
-                    pred, mu = self.forward(image)
-                else:
-                    pred = self.forward(image)
+                output_dict = self.forward(image)
             else:
                 with torch.autograd.no_grad():
-                    if use_emau:
-                        pred, mu = self.forward(image)
-                    else:
-                        pred = self.forward(image)
+                    output_dict = self.forward(image)
 
             # loss
+            # crop margin if necessary & reduce channel dimension
             if self.lbl_margin > 0:
                 label = label[:, self.lbl_margin:-self.lbl_margin, self.lbl_margin:-self.lbl_margin]
             loss_all = 0
             for c_cnt, c in enumerate(criterions):
-                loss = c(pred, label)
+                loss = c(output_dict['pred'], label)
                 if phase == 'train' and c_cnt in bp_loss_idx:
                     loss_all += loss_weights[c_cnt] * loss
                 c.update(loss, image.size(0))
+            if aux_train:
+                aux_loss = cls_criterion(output_dict['aux'], cls)
+                loss_all += cls_weight * aux_loss
+                cls_criterion.update(aux_loss, image.size(0))
             if phase == 'train':
                 if use_emau:
                     with torch.no_grad():
-                        mu = mu.mean(dim=0, keepdim=True)
+                        mu = output_dict['mu'].mean(dim=0, keepdim=True)
                         momentum = 0.9
                         self.encoder.emau.mu *= momentum
                         self.encoder.emau.mu += mu * (1 - momentum)
@@ -287,12 +150,15 @@ class Base(nn.Module):
                 if self.lbl_margin > 0:
                     img_image = img_image[:, :, self.lbl_margin: -self.lbl_margin, self.lbl_margin: -self.lbl_margin]
                 lbl_image = label.cpu().numpy()
-                pred_image = pred.detach().cpu().numpy()
+                pred_image = output_dict['pred'].detach().cpu().numpy()
                 banner = vis_utils.make_tb_image(img_image, lbl_image, pred_image, self.n_class, mean, std)
                 loss_dict['image'] = torch.from_numpy(banner)
         for c in criterions:
             loss_dict[c.name] = c.get_loss()
             c.reset()
+        if aux_train:
+            loss_dict[cls_criterion.name] = cls_criterion.get_loss()
+            cls_criterion.reset()
         return loss_dict
 
 
