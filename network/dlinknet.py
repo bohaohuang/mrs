@@ -119,27 +119,19 @@ class DLinkNet(base_model.Base):
             self.cls = None
 
     def forward(self, x):
+        output_dict = dict()
         # part a: encoder
         input_size = x.size()[2]
         x = self.encoder(x)
         ftr, layers = x[0], x[1:-1]
         if self.use_emau:
-            ftr, mu = self.encoder.emau(ftr)
-            # part b and c: center dilation + decoder
-            pred = self.decoder(ftr, layers, input_size)
-            return pred, mu
+            ftr, output_dict['mu'] = self.encoder.emau(ftr)
         if self.aux_loss:
-            if self.use_emau:
-                ftr, mu = self.encoder.emau(ftr)
-            pred = self.decoder(ftr, layers, input_size)
-            aux = F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1))
-            if self.use_emau:
-                return pred, mu, self.cls(aux)
-            else:
-                return pred, self.cls(aux)
-        else:
-            pred = self.decoder(ftr, layers, input_size)
-            return pred
+            output_dict['aux'] = self.cls(F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1)))
+        # part b and c: center dilation + decoder
+        pred = self.decoder(ftr, layers, input_size)
+        output_dict['pred'] = pred
+        return output_dict
 
 
 if __name__ == '__main__':
@@ -147,5 +139,6 @@ if __name__ == '__main__':
 
     net = DLinkNet(2, encoder_name='resnet101', aux_loss=True, use_emau=True)
     x = torch.randn((5, 3, 512, 512))
-    y, cls = net(x)
-    print(y.shape, cls.shape)
+    output_dict = net(x)
+    y, cls, mu = output_dict['pred'], output_dict['aux'], output_dict['mu']
+    print(y.shape, cls.shape, mu.shape)

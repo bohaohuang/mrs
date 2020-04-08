@@ -438,4 +438,10 @@ def historical_process_flag(flags):
         flags['use_emau'] = False
     elif isinstance(flags['use_emau'], str):
         flags['use_emau'] = eval(flags['use_emau'])
+    flags['ds_cfgs'] = [a for a in sorted(flags.keys()) if 'dataset' in a]
+    assert flags['ds_cfgs'][0] == 'dataset'
+    if 'gamma' not in flags['trainer']:
+        flags['trainer']['gamma'] = 2
+    if 'alpha' not in flags['trainer']:
+        flags['trainer']['alpha'] = 0.25
     return flags
