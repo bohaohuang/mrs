@@ -303,6 +303,15 @@ def unique_model_name(cfg):
         '-'.join([str(cfg[a]['batch_size']) for a in cfg['ds_cfgs']]), decay_str, dr_str, criterion_str, aux_str)
 
 
+def get_model_size(model):
+    """
+    Get the size of the models
+    :param model:
+    :return:
+    """
+    return sum(p.numel() for p in model.parameters()) / 1000000.0
+
+
 class DataParallelPassThrough(torch.nn.DataParallel):
     """
     Access model attributes after DataParallel wrapper

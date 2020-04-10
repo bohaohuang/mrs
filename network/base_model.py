@@ -35,7 +35,7 @@ class Base(nn.Module):
         raise NotImplementedError
 
     def inference(self, *inputs_):
-        outputs = self.forward(*inputs_)
+        outputs = self.forward(*inputs_)['pred']
         if isinstance(outputs, tuple):
             return outputs[0]
         else:
@@ -102,7 +102,7 @@ class Base(nn.Module):
 
         loss_dict = {}
         for img_cnt, data_dict in enumerate(tqdm(data_loaders[0], desc='{}'.format(phase))):
-            if mix_batch:
+            if mix_batch and phase == 'train':
                 for dlo in data_loader_others:
                     data_dict_other = next(dlo)
                     for key, val in data_dict.items():

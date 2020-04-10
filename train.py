@@ -85,7 +85,7 @@ def train_model(args, device, parallel):
         network_utils.load_epoch(args['save_dir'], args['trainer']['resume_epoch'], model, optm, device)
 
     # prepare training
-    print('Total params: {:.2f}M'.format(sum(p.numel() for p in model.parameters()) / 1000000.0))
+    print('Total params: {:.2f}M'.format(network_utils.get_model_size(model)))
     model.to(device)
     for c in criterions:
         c.to(device)
@@ -104,13 +104,15 @@ def train_model(args, device, parallel):
             n_class=args[ds_cfg]['class_num'], with_aux=with_aux),
             batch_size=int(args[ds_cfg]['batch_size']), shuffle=True, num_workers=int(args['dataset']['num_workers']),
             drop_last=True)
-        valid_loader = DataLoader(data_loader.get_loader(
-            args[ds_cfg]['data_dir'], args[ds_cfg]['valid_file'], transforms=tsfm_valid,
-            n_class=args[ds_cfg]['class_num'], with_aux=with_aux),
-            batch_size=int(args[ds_cfg]['batch_size']), shuffle=False, num_workers=int(args[ds_cfg]['num_workers']))
-        print('Training model on the {} dataset'.format(args[ds_cfg]['ds_name']))
         train_val_loaders['train'].append(train_loader)
-        train_val_loaders['valid'].append(valid_loader)
+
+        if 'valid_file' in args[ds_cfg]:
+            valid_loader = DataLoader(data_loader.get_loader(
+                args[ds_cfg]['data_dir'], args[ds_cfg]['valid_file'], transforms=tsfm_valid,
+                n_class=args[ds_cfg]['class_num'], with_aux=with_aux),
+                batch_size=int(args[ds_cfg]['batch_size']), shuffle=False, num_workers=int(args[ds_cfg]['num_workers']))
+            print('Training model on the {} dataset'.format(args[ds_cfg]['ds_name']))
+            train_val_loaders['valid'].append(valid_loader)
     mean, std = network_io.get_dataset_stats(args['dataset']['ds_name'], args['dataset']['data_dir'],
                                              mean_val=(eval(args['dataset']['mean']), eval(args['dataset']['std'])))
 
