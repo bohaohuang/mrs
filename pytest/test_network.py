@@ -10,8 +10,10 @@ import pytest
 
 # PyTorch
 import torch
+from torch import nn
 
 # Own modules
+from mrs_utils import misc_utils
 from network import unet, deeplabv3, pspnet, dlinknet
 
 
@@ -29,6 +31,7 @@ from network import unet, deeplabv3, pspnet, dlinknet
 ])
 def test_model(decoder_func, encoder_name):
     net = decoder_func(2, encoder_name=encoder_name, aux_loss=False, use_emau=False)
+    assert isinstance(net, nn.Module)
 
 
 @pytest.mark.parametrize('decoder_func', [
@@ -44,7 +47,7 @@ def test_model(decoder_func, encoder_name):
     'squeezenet1_0',
 ])
 @pytest.mark.parametrize('input_shape', [
-    (1, 3, 512, 512), (5, 3, 512, 512),
+    (5, 3, 512, 512), (5, 3, 1024, 1024),
 ])
 @pytest.mark.parametrize('class_number', [
     2, 7
@@ -56,8 +59,9 @@ def test_model(decoder_func, encoder_name):
     False, True
 ])
 def test_decoder_output_shape(decoder_func, encoder_name, input_shape, class_number, emau, aux):
-    net = decoder_func(class_number, encoder_name=encoder_name, aux_loss=aux, use_emau=emau)
-    x = torch.randn(input_shape)
+    device, parallel = misc_utils.set_gpu('1')
+    net = decoder_func(class_number, encoder_name=encoder_name, aux_loss=aux, use_emau=emau).to(device)
+    x = torch.randn(input_shape).to(device)
     output_dict = net(x)
     for key, val in output_dict.items():
         val_shape = list(val.shape)
