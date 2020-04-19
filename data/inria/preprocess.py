@@ -86,6 +86,10 @@ def get_images(data_dir, city_ids=tuple(range(5)), tile_ids=tuple(range(1, 6))):
             if city_name in VAL_CITY and tile_id in VAL_IDS:
                 rgb_files.append(rgb_filename)
                 gt_files.append(gt_filename)
+            else:
+                # FIXME adhoc solution to make rgb and gt files have the same length
+                rgb_files.append(rgb_filename)
+                gt_files.append(rgb_filename)
     return rgb_files, gt_files
 
 

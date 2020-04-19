@@ -97,6 +97,34 @@ def make_tb_image(img, lbl, pred, n_class, mean, std, chanel_first=True):
     return banner
 
 
+def make_image_banner(imgs, n_class, mean, std, max_ind=(2, ), decode_ind=(1, 2), chanel_first=True):
+    """
+    Make image banner for the tensorboard
+    :param imgs: list of images to display, each element has shape N * C * H * W
+    :param n_class: the number of classes
+    :param mean: mean used in normalization
+    :param std: std used in normalization
+    :param max_ind: indices of element in imgs to take max across the channel dimension
+    :param decode_ind: indicies of element in imgs to decode the labels
+    :param chanel_first: if True, the inputs are in channel first format
+    :return:
+    """
+    for cnt in range(len(imgs)):
+        if cnt in max_ind:
+            # pred: N * C * H * W
+            imgs[cnt] = np.argmax(imgs[cnt], 1)
+        if cnt in decode_ind:
+            # lbl map: N * 1 * H * W
+            imgs[cnt] = decode_label_map(imgs[cnt], n_class)
+        if (cnt not in max_ind) and (cnt not in decode_ind):
+            # rgb image: N * 3 * H * W
+            imgs[cnt] = inv_normalize(data_utils.change_channel_order(imgs[cnt]), mean, std) * 255
+    banner = np.concatenate(imgs, axis=2).astype(np.uint8)
+    if chanel_first:
+        banner = data_utils.change_channel_order(banner, False)
+    return banner
+
+
 def make_cmp_mask(lbl, pred, tp_mask_color=(0, 255, 0), fp_mask_color=(255, 0, 0), fn_mask_color=(0, 0, 255)):
     """
     Make compare mask for visualization purpose, the label and prediction maps should be binary and the truth value can

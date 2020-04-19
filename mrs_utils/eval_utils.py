@@ -389,11 +389,11 @@ class Evaluator:
             self.class_names = ['panel', ]
         elif load_func:
             self.truth_val = kwargs.pop('truth_val', 1)
-            self.rgb_files, self.lbl_files = load_func(data_dir, **kwargs)
-            assert len(self.rgb_files) == len(self.lbl_files)
             self.decode_func = kwargs.pop('decode_func', None)
             self.encode_func = kwargs.pop('encode_func', None)
             self.class_names = kwargs.pop('class_names', ['building', ])
+            self.rgb_files, self.lbl_files = load_func(data_dir, **kwargs)
+            assert len(self.rgb_files) == len(self.lbl_files)
         else:
             raise NotImplementedError('Dataset {} is not supported')
 
@@ -410,6 +410,11 @@ class Evaluator:
 
     def evaluate(self, model, patch_size, overlap, pred_dir=None, report_dir=None, save_conf=False, delta=1e-6,
                  eval_class=(1, ), visualize=False):
+        if isinstance(model, list) or isinstance(model, tuple):
+            lbl_margin = model[0].lbl_margin
+        else:
+            lbl_margin = model.lbl_margin
+
         iou_a, iou_b = np.zeros(len(eval_class)), np.zeros(len(eval_class))
         report = []
         if pred_dir:
@@ -425,28 +430,16 @@ class Evaluator:
 
             # evaluate on tiles
             tile_dim = rgb.shape[:2]
-            tile_dim_pad = [tile_dim[0]+2*model.lbl_margin, tile_dim[1]+2*model.lbl_margin]
+            tile_dim_pad = [tile_dim[0]+2*lbl_margin, tile_dim[1]+2*lbl_margin]
             grid_list = patch_extractor.make_grid(tile_dim_pad, patch_size, overlap)
-            tile_preds = []
-            for patch in patch_extractor.patch_block(rgb, model.lbl_margin, grid_list, patch_size, False):
-                patch_preds = []
-                for aug_patch in self.ensembler.augment_data(patch):
-                    for tsfm in self.tsfm:
-                        tsfm_image = tsfm(image=aug_patch)
-                        aug_patch = tsfm_image['image']
-                    aug_patch = torch.unsqueeze(aug_patch, 0).to(self.device)
-                    pred = F.softmax(model.inference(aug_patch), 1).detach().cpu().numpy()
-                    patch_preds.append(pred)
-                tile_preds.append(data_utils.change_channel_order(self.ensembler.fuse_data(patch_preds), True)[0, :, :, :])
-            # stitch back to tiles
-            tile_preds = patch_extractor.unpatch_block(
-                np.array(tile_preds),
-                tile_dim_pad,
-                patch_size,
-                tile_dim,
-                [patch_size[0]-2*model.lbl_margin, patch_size[1]-2*model.lbl_margin],
-                overlap=2*model.lbl_margin
-            )
+
+            if isinstance(model, list) or isinstance(model, tuple):
+                tile_preds = 0
+                for m in model:
+                    tile_preds = tile_preds + self.infer_tile(m, rgb, grid_list, patch_size, tile_dim, tile_dim_pad, lbl_margin)
+            else:
+                tile_preds = self.infer_tile(model, rgb, grid_list, patch_size, tile_dim, tile_dim_pad, lbl_margin)
+
             if save_conf:
                 misc_utils.save_file(os.path.join(pred_dir, '{}.npy'.format(file_name)),
                                      scipy.special.softmax(tile_preds, axis=-1)[:, :, 1])
@@ -476,7 +469,35 @@ class Evaluator:
             misc_utils.save_file(os.path.join(report_dir, 'result.txt'), report)
         return np.mean(iou_a / (iou_b + delta))*100
 
+    def infer_tile(self, model, rgb, grid_list, patch_size, tile_dim, tile_dim_pad, lbl_margin):
+        tile_preds = []
+        for patch in patch_extractor.patch_block(rgb, model.lbl_margin, grid_list, patch_size, False):
+            patch_preds = []
+            for aug_patch in self.ensembler.augment_data(patch):
+                for tsfm in self.tsfm:
+                    tsfm_image = tsfm(image=aug_patch)
+                    aug_patch = tsfm_image['image']
+                aug_patch = torch.unsqueeze(aug_patch, 0).to(self.device)
+                pred = F.softmax(model.inference(aug_patch), 1).detach().cpu().numpy()
+                patch_preds.append(pred)
+            tile_preds.append(data_utils.change_channel_order(self.ensembler.fuse_data(patch_preds), True)[0, :, :, :])
+        # stitch back to tiles
+        tile_preds = patch_extractor.unpatch_block(
+            np.array(tile_preds),
+            tile_dim_pad,
+            patch_size,
+            tile_dim,
+            [patch_size[0] - 2 * lbl_margin, patch_size[1] - 2 * lbl_margin],
+            overlap=2 * lbl_margin
+        )
+        return tile_preds
+
     def infer(self, model, pred_dir, patch_size, overlap, ext='_mask', file_ext='png', visualize=False):
+        if isinstance(model, list) or isinstance(model, tuple):
+            lbl_margin = model[0].lbl_margin
+        else:
+            lbl_margin = model.lbl_margin
+
         misc_utils.make_dir_if_not_exist(pred_dir)
         pbar = tqdm(self.rgb_files)
         for rgb_file in pbar:
@@ -487,29 +508,18 @@ class Evaluator:
 
             # evaluate on tiles
             tile_dim = rgb.shape[:2]
-            tile_dim_pad = [tile_dim[0] + 2 * model.lbl_margin, tile_dim[1] + 2 * model.lbl_margin]
+            tile_dim_pad = [tile_dim[0] + 2 * lbl_margin, tile_dim[1] + 2 * lbl_margin]
             grid_list = patch_extractor.make_grid(tile_dim_pad, patch_size, overlap)
-            tile_preds = []
-            for patch in patch_extractor.patch_block(rgb, model.lbl_margin, grid_list, patch_size, False):
-                patch_preds = []
-                for aug_patch in self.ensembler.augment_data(patch):
-                    for tsfm in self.tsfm:
-                        tsfm_image = tsfm(image=aug_patch)
-                        aug_patch = tsfm_image['image']
-                    aug_patch = torch.unsqueeze(aug_patch, 0).to(self.device)
-                    pred = F.softmax(model.inference(aug_patch), 1).detach().cpu().numpy()
-                    patch_preds.append(pred)
-                tile_preds.append(data_utils.change_channel_order(self.ensembler.fuse_data(patch_preds), True)[0, :, :, :])
-            # stitch back to tiles
-            tile_preds = patch_extractor.unpatch_block(
-                np.array(tile_preds),
-                tile_dim_pad,
-                patch_size,
-                tile_dim,
-                [patch_size[0] - 2 * model.lbl_margin, patch_size[1] - 2 * model.lbl_margin],
-                overlap=2 * model.lbl_margin
-            )
+
+            if isinstance(model, list) or isinstance(model, tuple):
+                tile_preds = 0
+                for m in model:
+                    tile_preds = tile_preds + self.infer_tile(m, rgb, grid_list, patch_size, tile_dim, tile_dim_pad,
+                                                              lbl_margin)
+            else:
+                tile_preds = self.infer_tile(model, rgb, grid_list, patch_size, tile_dim, tile_dim_pad, lbl_margin)
             tile_preds = np.argmax(tile_preds, -1)
+
             if self.encode_func:
                 pred_img = self.encode_func(tile_preds)
             else:

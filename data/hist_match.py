@@ -70,14 +70,25 @@ class HistMatcher(object):
             im_res[:, :, d] = im3.reshape((img_s.shape[0], img_s.shape[1]))
         return im_res
 
-    def match_target_images(self, target_imgs):
+    def match_target_images(self, target_imgs, individual=False):
         """
         Match the given list of target images
         :param target_imgs: list of image files, could be file names or numpy arrays
+        :param individual: if True, compute histogram of each target image respectively
         :return: a generator that yields adjusted image one each time
         """
-        target_hist = self.get_histogram(target_imgs)
+        if not individual:
+            target_hist = self.get_histogram(target_imgs)
         for target_img_file in target_imgs:
+            if individual:
+                target_hist = self.get_histogram([target_img_file])
+
+                '''import scipy.signal
+                color_list = ['r', 'g', 'b']
+                for c in range(3):
+                    plt.plot(target_hist[c, :], color_list[c])
+                plt.show()'''
+
             if isinstance(target_img_file, str):
                 img = misc_utils.load_file(target_img_file)
             else:

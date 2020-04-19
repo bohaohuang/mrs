@@ -102,7 +102,8 @@ class ColorMatcher(object):
 
         for epoch in range(total_epoch):
             for img_cnt, image_target in enumerate(tqdm(target_loader, desc='Epoch: {}/{}'.format(epoch, total_epoch))):
-                image_source, _ = next(source_loader)
+                image_target = image_target['image']
+                image_source = next(source_loader)['image']
 
                 image_source = (image_source / 127.5) - 1
                 image_target = (image_target / 127.5) - 1
@@ -172,11 +173,19 @@ class ColorMatcher(object):
 
 
 if __name__ == '__main__':
-    device, _ = misc_utils.set_gpu('0')
+    device, _ = misc_utils.set_gpu('1')
 
-    color_matcher = ColorMatcher(r'/hdd/mrs/inria/ps512_pd0_ol0/patches', r'/hdd/mrs/inria/ps512_pd0_ol0/file_list_train.txt')
-    color_matcher.fit_helper(r'/hdd/mrs/deepglobe/14p_pd0_ol0/patches', r'/hdd/mrs/deepglobe/14p_pd0_ol0/file_list_train.txt', device,
-                             r'/home/lab/Documents/bohao/tasks/2017.12.11.inria_unet_test/mapper')
+    color_matcher = ColorMatcher(r'/hdd/mrs/SD17/ps512_pd0_ol0/1/patches',
+                                 r'/hdd/mrs/SD17/ps512_pd0_ol0/file_list_all.txt')
+    # color_matcher.fit_helper(r'/hdd/mrs/lbnlb/patches', r'/hdd/mrs/lbnlb/file_list_train.txt', device,
+    #                          r'/home/lab/Documents/bohao/tasks/2017.12.11.inria_unet_test/mapper')
+
+    color_matcher.fit('sd2spca',
+                      r'/hdd/mrs/spca/patches',
+                      r'/hdd/mrs/spca/file_list_train.txt',
+                      device,
+                      r'/home/lab/Documents/bohao/tasks/2017.12.11.inria_unet_test/mapper',
+                      force_run=True)
 
     '''color_matcher = ColorMatcher(r'/hdd/mrs/spca/patches',
                                  r'/hdd/mrs/spca/file_list_train.txt')

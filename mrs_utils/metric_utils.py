@@ -66,12 +66,14 @@ class LossMeter(LossClass):
     """
     A meter for calculated loss
     """
-    def __init__(self, name_ext=''):
+    def __init__(self, name_ext='', func=None):
         super(LossMeter, self).__init__()
         self.name = 'meter_' + name_ext
+        self.func = func
 
     def forward(self, pred, lbl):
-        pass
+        if self.func:
+            return self.func(pred, lbl)
 
 
 class CrossEntropyLoss(LossClass):
@@ -88,6 +90,22 @@ class CrossEntropyLoss(LossClass):
         if len(lbl.shape) == 4 and lbl.shape[1] == 1:
             lbl = lbl[:, 0, :, :]
         return self.criterion(pred, lbl)
+
+
+class PixelWeightedCrossEntropyLoss(LossClass):
+    """
+    Cross entropy loss function used in training
+    """
+    def __init__(self, class_weights=(1., 1.)):
+        super(PixelWeightedCrossEntropyLoss, self).__init__()
+        self.name = 'pw_xent'
+        class_weights = torch.tensor([float(a) for a in class_weights])
+        self.criterion = nn.CrossEntropyLoss(class_weights, reduction='none')
+
+    def forward(self, pred, lbl, weight_map):
+        if len(lbl.shape) == 4 and lbl.shape[1] == 1:
+            lbl = lbl[:, 0, :, :]
+        return torch.mean(self.criterion(pred, lbl) * weight_map)
 
 
 class BCEWithLogitLoss(LossClass):
