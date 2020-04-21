@@ -131,7 +131,8 @@ def train_model(args, device, parallel):
             loss_dict = model.step(train_val_loaders[phase], device, optm, phase, criterions,
                                    eval(args['trainer']['bp_loss_idx']), True, mean, std,
                                    loss_weights=eval(args['trainer']['loss_weights']), use_emau=args['use_emau'],
-                                   cls_criterion=cls_criterion, cls_weight=args['optimizer']['aux_loss_weight'])
+                                   use_ocr=args['use_ocr'], cls_criterion=cls_criterion,
+                                   cls_weight=args['optimizer']['aux_loss_weight'])
             network_utils.write_and_print(writer, phase, epoch, int(args['trainer']['epochs']), loss_dict, start_time)
 
         scheduler.step()

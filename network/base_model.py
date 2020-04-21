@@ -72,7 +72,7 @@ class Base(nn.Module):
 
     def step(self, data_loaders, device, optm, phase, criterions, bp_loss_idx=0, save_image=True,
              mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), loss_weights=None, use_emau=False,
-             cls_criterion=None, cls_weight=0.1):
+             use_ocr=False, cls_criterion=None, cls_weight=0.1):
         """
         This function does one forward and backward path in the training
         Print necessary message
@@ -128,7 +128,10 @@ class Base(nn.Module):
             loss_all = 0
             for c_cnt, c in enumerate(criterions):
                 loss = c(output_dict['pred'], label)
+                # FIXME adhoc solution for OCRNet's region supervision
                 if phase == 'train' and c_cnt in bp_loss_idx:
+                    if use_ocr:
+                        loss += c(output_dict['region'], label) * 0.4
                     loss_all += loss_weights[c_cnt] * loss
                 c.update(loss, image.size(0))
             if aux_train:

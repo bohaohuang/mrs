@@ -40,19 +40,24 @@ def create_model(args):
     if args['decoder_name'] == 'unet':
         if args['encoder_name'] == 'base':
             model = unet.UNet(sfn=args['sfn'], n_class=args['dataset']['class_num'],
-                              encoder_name=args['encoder_name'], aux_loss=aux_loss, use_emau=args['use_emau'])
+                              encoder_name=args['encoder_name'], aux_loss=aux_loss, use_emau=args['use_emau'],
+                              use_ocr=args['use_ocr'])
         else:
             model = unet.UNet(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'],
-                              pretrained=eval(args['imagenet']), aux_loss=aux_loss, use_emau=args['use_emau'])
+                              pretrained=eval(args['imagenet']), aux_loss=aux_loss, use_emau=args['use_emau'],
+                              use_ocr=args['use_ocr'])
     elif args['decoder_name'] in ['psp', 'pspnet']:
         model = pspnet.PSPNet(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'],
-                              pretrained=eval(args['imagenet']), aux_loss=aux_loss, use_emau=args['use_emau'])
+                              pretrained=eval(args['imagenet']), aux_loss=aux_loss, use_emau=args['use_emau'],
+                              use_ocr=args['use_ocr'])
     elif args['decoder_name'] == 'dlinknet':
         model = dlinknet.DLinkNet(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'],
-                                  pretrained=eval(args['imagenet']), aux_loss=aux_loss, use_emau=args['use_emau'])
+                                  pretrained=eval(args['imagenet']), aux_loss=aux_loss, use_emau=args['use_emau'],
+                                  use_ocr=args['use_ocr'])
     elif args['decoder_name'] == 'deeplabv3':
         model = deeplabv3.DeepLabV3(n_class=args['dataset']['class_num'], encoder_name=args['encoder_name'],
-                                    pretrained=eval(args['imagenet']), aux_loss=aux_loss, use_emau=args['use_emau'])
+                                    pretrained=eval(args['imagenet']), aux_loss=aux_loss, use_emau=args['use_emau'],
+                                    use_ocr=args['use_ocr'])
     else:
         raise NotImplementedError('Decoder structure {} is not supported'.format(args['decoder_name']))
     return model

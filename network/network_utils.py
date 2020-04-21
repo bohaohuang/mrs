@@ -297,8 +297,12 @@ def unique_model_name(cfg):
             emau_str = 'EMAU64'
     else:
         emau_str = ''
-    return 'ec{}{}_dc{}_ds{}_lre{:.0e}_lrd{:.0e}_ep{}_bs{}_ds{}_dr{}_cr{}{}'.format(
-        cfg['encoder_name'], emau_str, cfg['decoder_name'], '-'.join([cfg[a]['ds_name'] for a in cfg['ds_cfgs']]),
+    if cfg['use_ocr']:
+        ocr_str = 'OCR'
+    else:
+        ocr_str = ''
+    return 'ec{}{}{}_dc{}_ds{}_lre{:.0e}_lrd{:.0e}_ep{}_bs{}_ds{}_dr{}_cr{}{}'.format(
+        cfg['encoder_name'], emau_str, ocr_str, cfg['decoder_name'], '-'.join([cfg[a]['ds_name'] for a in cfg['ds_cfgs']]),
         cfg['optimizer']['learn_rate_encoder'], cfg['optimizer']['learn_rate_decoder'], cfg['trainer']['epochs'],
         '-'.join([str(cfg[a]['batch_size']) for a in cfg['ds_cfgs']]), decay_str, dr_str, criterion_str, aux_str)
 

@@ -14,9 +14,9 @@ from torch import nn
 from torch.nn import functional as F
 
 # Own modules
-from network import base_model, emau
-from network.backbones import encoders
 from mrs_utils import misc_utils
+from network.backbones import encoders
+from network import base_model, emau, ocr
 
 
 class PSPDecoder(nn.Module):
@@ -77,7 +77,7 @@ class PSPNet(base_model.Base):
     This module is the original Unet defined in paper
     """
     def __init__(self, n_class, out_chan=1024, bin_sizes=(1, 2, 3, 6), drop_rate=0.3,
-                 encoder_name='vgg16', pretrained=True, aux_loss=False, use_emau=False):
+                 encoder_name='vgg16', pretrained=True, aux_loss=False, use_emau=False, use_ocr=False):
         """
         Initialize the Unet model
         :param n_class: the number of class
@@ -90,6 +90,7 @@ class PSPNet(base_model.Base):
         self.n_class = n_class
         self.aux_loss = aux_loss
         self.use_emau = use_emau
+        self.use_ocr = use_ocr
         self.encoder_name = misc_utils.stem_string(encoder_name)
         strides = (2, 2, 2, 1, 1)
         self.encoder = encoders.models(self.encoder_name, pretrained, strides, False)
@@ -99,7 +100,8 @@ class PSPNet(base_model.Base):
             else:
                 c = 64
             self.encoder.emau = emau.EMAU(self.encoder.chans[0], c)
-        self.decoder = PSPDecoder(n_class, self.encoder.chans[0], out_chan, bin_sizes, drop_rate)
+        if self.use_ocr:
+            self.encoder.ocr = ocr.OCRModule(self.n_class, self.encoder.chans[0], self.encoder.chans[0], self.encoder.chans[0])
         if self.aux_loss:
             self.cls = nn.Sequential(
                 nn.Linear(self.encoder.chans[0], 256),
@@ -108,12 +110,17 @@ class PSPNet(base_model.Base):
             )
         else:
             self.cls = None
+        self.decoder = PSPDecoder(n_class, self.encoder.chans[0], out_chan, bin_sizes, drop_rate)
 
     def forward(self, x):
+        input_size = x.shape[2:]
         output_dict = dict()
         ftr = self.encoder(x)
         if self.use_emau:
             ftr, output_dict['mu'] = self.encoder.emau(ftr)
+        if self.use_ocr:
+            region, ftr = self.encoder.ocr(ftr, ftr)
+            output_dict['region'] = F.interpolate(region, size=input_size, mode='bilinear', align_corners=False)
         if self.aux_loss:
             output_dict['aux'] = self.cls(F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1)))
         pred = self.decoder(ftr)
@@ -122,8 +129,8 @@ class PSPNet(base_model.Base):
 
 
 if __name__ == '__main__':
-    vgg16 = PSPNet(2, encoder_name='vgg16_bn', aux_loss=True, use_emau=True)
+    model = PSPNet(2, encoder_name='resnet50', use_ocr=True)
     x = torch.randn((5, 3, 512, 512))
-    output_dict = vgg16(x)
-    y, cls, mu = output_dict['pred'], output_dict['aux'], output_dict['mu']
-    print(y.shape, cls.shape, mu.shape)
+    output_dict = model(x)
+    y, region = output_dict['pred'], output_dict['region']
+    print(y.shape, region.shape)
