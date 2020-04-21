@@ -13,9 +13,9 @@ from torch import nn
 from torch.nn import functional as F
 
 # Own modules
-from network import base_model, emau
-from network.backbones import encoders
 from mrs_utils import misc_utils
+from network.backbones import encoders
+from network import base_model, emau, ocr
 
 
 class ConvDownSample(nn.Module):
@@ -122,7 +122,8 @@ class UNet(base_model.Base):
     """
     This module is the original Unet defined in paper
     """
-    def __init__(self, n_class, sfn=32, encoder_name='base', pretrained=True, aux_loss=False, use_emau=False):
+    def __init__(self, n_class, sfn=32, encoder_name='base', pretrained=True, aux_loss=False, use_emau=False,
+                 use_ocr=False):
         """
         Initialize the Unet model
         :param sfn: the start filter number, following blocks have n*sfn number of filters
@@ -130,13 +131,15 @@ class UNet(base_model.Base):
         :param encoder_name: name of the encoder, could be 'base', 'vgg16'
         :param pretrained: if True, load the weights from pretrained model
         :param aux_loss: if True, will create a classification branch for extracted features
-        :param use_emau: if True or int, the an EMAU will be appended at the end of the encoder
+        :param use_emau: if True or int, an EMAU will be appended at the end of the encoder
+        :param use_ocr: if True, the OCR module will be appended at the end of the encoder
         """
         super(UNet, self).__init__()
         self.n_class = n_class
         self.encoder_name = misc_utils.stem_string(encoder_name)
         self.aux_loss = aux_loss
         self.use_emau = use_emau
+        self.use_ocr = use_ocr
         if self.encoder_name == 'base':
             self.sfn = sfn
             self.encoder = UnetBaseEncoder(self.sfn)
@@ -172,15 +175,21 @@ class UNet(base_model.Base):
             else:
                 c = 64
             self.encoder.emau = emau.EMAU(self.decode_in_chans[0], c)
+        if self.use_ocr:
+            self.encoder.ocr = ocr.OCRModule(self.n_class, *self.encoder.chans[:2][::-1], self.encoder.chans[0])
         self.decoder = UnetDecoder(self.decode_in_chans, self.decode_out_chans, self.margins, self.n_class,
                                    conv_chan, pad, up_sample)
 
     def forward(self, x):
+        input_size = x.shape[2:]
         output_dict = dict()
         x = self.encoder(x)
         ftr, layers = x[0], x[1:]
         if self.use_emau:
             ftr, output_dict['mu'] = self.encoder.emau(ftr)
+        if self.use_ocr:
+            region, ftr = self.encoder.ocr(layers[0], ftr)
+            output_dict['region'] = F.interpolate(region, size=input_size, mode='bilinear', align_corners=False)
         if self.aux_loss:
             output_dict['aux'] = self.cls(F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1)))
         pred = self.decoder(ftr, layers)
@@ -189,5 +198,9 @@ class UNet(base_model.Base):
 
 
 if __name__ == '__main__':
-    from network import network_utils
-    network_utils.network_summary(UNet, (3, 512, 512), sfn=32, n_class=2, encoder_name='resnet152')
+    net = UNet(2, encoder_name='resnet101', aux_loss=False, use_emau=True, use_ocr=True)
+    x = torch.randn((5, 3, 512, 512))
+    output_dict = net(x)
+    print(output_dict['pred'].shape)
+    print(output_dict['region'].shape)
+    print(output_dict['mu'].shape)

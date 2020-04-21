@@ -13,8 +13,8 @@ import torch.nn.functional as F
 from torch import nn
 
 # Own modules
-from network import base_model, emau
 from network.backbones import encoders
+from network import base_model, emau, ocr
 
 
 class _ASPPModule(nn.Module):
@@ -134,11 +134,12 @@ class DeepLabV3(base_model.Base):
     This module implements the DeepLabV3 in paper https://arxiv.org/pdf/1802.02611.pdf
     """
     def __init__(self, n_class, encoder_name='resnet34', pretrained=True, outchan=256, dropout_rate=0.5,
-                 aux_loss=False, use_emau=False):
+                 aux_loss=False, use_emau=False, use_ocr=False):
         super(DeepLabV3, self).__init__()
         self.n_class = n_class
         self.aux_loss = aux_loss
         self.use_emau = use_emau
+        self.use_ocr = use_ocr
         self.encoder_name = encoder_name
         self.encoder = encoders.models(self.encoder_name, pretrained, (2, 2, 2, 2, 1), True)
         if self.use_emau:
@@ -147,7 +148,8 @@ class DeepLabV3(base_model.Base):
             else:
                 c = 64
             self.encoder.emau = emau.EMAU(self.encoder.chans[0], c)
-        self.decoder = DeepLabV3Decoder(n_class, self.encoder.chans[0], self.encoder.chans[3], outchan, dropout_rate)
+        if self.use_ocr:
+            self.encoder.ocr = ocr.OCRModule(self.n_class, self.encoder.chans[3], self.encoder.chans[0], self.encoder.chans[0])
         if self.aux_loss:
             self.cls = nn.Sequential(
                 nn.Linear(self.encoder.chans[0], 256),
@@ -156,6 +158,7 @@ class DeepLabV3(base_model.Base):
             )
         else:
             self.cls = None
+        self.decoder = DeepLabV3Decoder(n_class, self.encoder.chans[0], self.encoder.chans[3], outchan, dropout_rate)
 
     def forward(self, x):
         output_dict = dict()
@@ -164,6 +167,9 @@ class DeepLabV3(base_model.Base):
         ftr, layer = x[0], x[3]
         if self.use_emau:
             ftr, output_dict['mu'] = self.encoder.emau(ftr)
+        if self.use_ocr:
+            region, ftr = self.encoder.ocr(layer, ftr)
+            output_dict['region'] = F.interpolate(region, size=input_size, mode='bilinear', align_corners=False)
         if self.aux_loss:
             output_dict['aux'] = self.cls(F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1)))
         pred = self.decoder(ftr, layer, input_size)
@@ -172,8 +178,8 @@ class DeepLabV3(base_model.Base):
 
 
 if __name__ == '__main__':
-    net = DeepLabV3(2, encoder_name='resnet101', aux_loss=True, use_emau=True)
+    net = DeepLabV3(2, encoder_name='resnet50', aux_loss=False, use_emau=False, use_ocr=True)
     x = torch.randn((5, 3, 512, 512))
     output_dict = net(x)
-    y, cls, mu = output_dict['pred'], output_dict['aux'], output_dict['mu']
-    print(y.shape, cls.shape, mu.shape)
+    y, region = output_dict['pred'], output_dict['region']
+    print(y.shape, region.shape)
