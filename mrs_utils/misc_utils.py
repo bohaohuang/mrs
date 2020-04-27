@@ -441,7 +441,10 @@ def historical_process_flag(flags):
     if 'use_ocr' not in flags:
         flags['use_ocr'] = False
     else:
-        flags['use_ocr'] = eval(flags['use_ocr'])
+        try:
+            flags['use_ocr'] = eval(flags['use_ocr'])
+        except TypeError:
+            pass
     flags['ds_cfgs'] = [a for a in sorted(flags.keys()) if 'dataset' in a]
     assert flags['ds_cfgs'][0] == 'dataset'
     if 'gamma' not in flags['trainer']:
