@@ -123,3 +123,5 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+.gitignore
+__init__.py

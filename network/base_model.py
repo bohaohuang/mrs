@@ -15,7 +15,6 @@ from torch import nn
 from torch.autograd import Variable
 
 # Own modules
-from data import data_loader
 from mrs_utils import vis_utils
 from network import network_utils
 
@@ -98,7 +97,7 @@ class Base(nn.Module):
         if len(data_loaders) > 1:
             mix_batch = True
             for dlo in data_loaders[1:]:
-                data_loader_others.append(data_loader.infi_loop_loader(dlo))
+                data_loader_others.append(network_utils.infi_loop_loader(dlo))
 
         loss_dict = {}
         for img_cnt, data_dict in enumerate(tqdm(data_loaders[0], desc='{}'.format(phase))):

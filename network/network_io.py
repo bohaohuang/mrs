@@ -15,7 +15,6 @@ from torch import optim
 from albumentations.pytorch import ToTensorV2
 
 # Own modules
-from data import data_utils
 from mrs_utils import misc_utils, metric_utils, process_block
 from network import unet, pspnet, dlinknet, deeplabv3, network_utils
 
@@ -106,17 +105,21 @@ def create_optimizer(optm_name, train_params, lr):
     return optm
 
 
-def create_tsfm(args, mean, std):
+def create_tsfm(args, mean, std, normalize=True):
     """
     Create transform based on configuration
     :param args: the argument parameters defined in config.py
     :param mean: mean of the dataset
     :param std: std of the dataset
+    :param normalize: if True, will normalize the dataset
     :return: corresponding train and validation transforms
     """
     input_size = eval(args['dataset']['input_size'])
     crop_size = eval(args['dataset']['crop_size'])
-    tsfms = [A.Flip(), A.RandomRotate90(), A.Normalize(mean=mean, std=std), ToTensorV2()]
+    if normalize:
+        tsfms = [A.Flip(), A.RandomRotate90(), A.Normalize(mean=mean, std=std), ToTensorV2()]
+    else:
+        tsfms = [A.Flip(), A.RandomRotate90(), ToTensorV2()]
     if input_size[0] > crop_size[0] and input_size[1] > crop_size[1]:
         tsfm_train = A.Compose([A.RandomCrop(*crop_size)] + tsfms)
         tsfm_valid = A.Compose([A.RandomCrop(*crop_size)] + tsfms[2:])

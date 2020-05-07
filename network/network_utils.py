@@ -89,7 +89,7 @@ def load_optim(optim, state_dict, device):
                 state[k] = v.to(device)
 
 
-def load_epoch(save_dir, resume_epoch, model, optm, device):
+def load_epoch(save_dir, resume_epoch, model, optm, device, model_key='state_dict'):
     """
     Load model from a snapshot, this function can be used to resume training
     :param save_dir: directory that saved the model
@@ -103,7 +103,7 @@ def load_epoch(save_dir, resume_epoch, model, optm, device):
         map_location=lambda storage, loc: storage)  # Load all tensors onto the CPU
     print("Initializing weights from: {}...".format(
         os.path.join(save_dir, 'epoch-' + str(resume_epoch) + '.pth.tar')))
-    model.load_state_dict(checkpoint['state_dict'])
+    model.load_state_dict(checkpoint[model_key])
     load_optim(optm, checkpoint['opt_dict'], device)
 
 
@@ -199,7 +199,7 @@ def flex_load(model_dict, ckpt_dict, relax_load=False, disable_parallel=False, v
         return pretrained_state
 
 
-def load(model, model_path, relax_load=False, disable_parallel=False, optm=None, device=None):
+def load(model, model_path, relax_load=False, disable_parallel=False, optm=None, device=None, model_key='state_dict'):
     """
     Load the weights in the pretrained model directory, the order of loading method is as follows:
     1. Try load the exact name of tensors in the pretrained model file, if not all names are the same, try 2;
@@ -215,10 +215,10 @@ def load(model, model_path, relax_load=False, disable_parallel=False, optm=None,
     """
     checkpoint = torch.load(model_path, map_location=lambda storage, loc: storage)
     try:
-        model.load_state_dict(checkpoint['state_dict'])
+        model.load_state_dict(checkpoint[model_key])
     except RuntimeError:
         try:
-            pretrained_state = flex_load(model.state_dict(), checkpoint['state_dict'], relax_load, disable_parallel)
+            pretrained_state = flex_load(model.state_dict(), checkpoint[model_key], relax_load, disable_parallel)
             model.load_state_dict(pretrained_state, strict=False)
         except ValueError:
             if device is not None:
@@ -227,7 +227,7 @@ def load(model, model_path, relax_load=False, disable_parallel=False, optm=None,
                 gpu = 0
             model.encoder = DataParallelPassThrough(model.encoder, [gpu, ])
             model.decoder = DataParallelPassThrough(model.decoder, [gpu, ])
-            model.load_state_dict(checkpoint['state_dict'])
+            model.load_state_dict(checkpoint[model_key])
             print('Loaded model with parallel auto-matching!')
     except KeyError:
         # FIXME this is a adhoc fix to be compatible with RSMoCo
@@ -326,3 +326,13 @@ class DataParallelPassThrough(torch.nn.DataParallel):
             return super().__getattr__(name)
         except AttributeError:
             return getattr(self.module, name)
+
+
+def infi_loop_loader(dl):
+    """
+    An iterator that reloads after reaching to the end
+    :param dl: data loader
+    :return: an endless iterator
+    """
+    while True:
+        for x in dl: yield x

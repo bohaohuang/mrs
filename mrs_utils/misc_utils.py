@@ -246,7 +246,6 @@ def set_random_seed(seed_):
     """
     torch.manual_seed(seed_)
     torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
     np.random.seed(seed_)
 
 
@@ -336,6 +335,8 @@ def get_files(path_list, extension):
     :param extension: regex that filters the desired files
     :return: list of files
     """
+    if isinstance(path_list, str):
+        path_list = [path_list]
     return natsorted(glob(os.path.join(*path_list, extension)))
 
 

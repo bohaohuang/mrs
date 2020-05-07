@@ -107,7 +107,7 @@ def train_model(args, device, parallel):
         train_val_loaders['train'].append(train_loader)
 
         if 'valid_file' in args[ds_cfg]:
-            valid_loader = DataLoader(data_loader.get_loader(
+            valid_loader = DataLoader (data_loader.get_loader(
                 args[ds_cfg]['data_dir'], args[ds_cfg]['valid_file'], transforms=tsfm_valid,
                 n_class=args[ds_cfg]['class_num'], with_aux=with_aux),
                 batch_size=int(args[ds_cfg]['batch_size']), shuffle=False, num_workers=int(args[ds_cfg]['num_workers']))

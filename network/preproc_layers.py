@@ -22,9 +22,11 @@ class TransformLayer(nn.Module):
         raise NotImplementedError
 
     def step(self, model, data_loaders, device, optm, phase, criterions, bp_loss_idx=0, loss_weights=None,
-             mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), class_num=2):
+             mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), class_num=2, normalize=False):
         loss_dict = {}
         for img_cnt, data_dict in enumerate(tqdm(data_loaders[0], desc='{}'.format(phase))):
+            if not normalize:
+                data_dict['image'] = (data_dict['image'] / 127.5) - 1
             image = Variable(data_dict['image'], requires_grad=True).to(device)
             label = Variable(data_dict['mask']).long().to(device)
 
@@ -92,7 +94,7 @@ class AffineTransform(TransformLayer):
         return self.a * x + self.b
 
 
-class ColorMap(nn.Module):
+class ColorMap(TransformLayer):
     def __init__(self):
         super(ColorMap, self).__init__()
         self.w = nn.Parameter(torch.ones((256 * 256 * 256, 3)), requires_grad=True)
@@ -111,6 +113,8 @@ def create_preproc_layer(preproc_name):
         preproc_layer = GammaAdjustTransform()
     elif preproc_name == 'affine':
         preproc_layer = AffineTransform()
+    elif preproc_name == 'colormap':
+        preproc_layer = ColorMap()
     else:
         raise NotImplementedError('Preproc layer {} not supported'.format(preproc_name))
     return preproc_layer
