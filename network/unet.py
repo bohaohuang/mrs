@@ -194,7 +194,7 @@ class UNet(base_model.Base):
             output_dict['aux'] = self.cls(F.adaptive_max_pool2d(input=ftr, output_size=(1, 1)).view(-1, ftr.size(1)))
         pred = self.decoder(ftr, layers)
         output_dict['pred'] = pred
-        return output_dict
+        return pred
 
 
 if __name__ == '__main__':

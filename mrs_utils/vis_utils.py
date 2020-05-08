@@ -7,7 +7,25 @@ import matplotlib.pyplot as plt
 
 
 # Own modules
-from data import data_utils
+
+
+def change_channel_order(data, to_channel_last=True):
+    """
+    Switch the image type from channel first to channel last
+    :param data: the data to switch the channels
+    :param to_channel_last: if True, switch the first channel to the last
+    :return: the channel switched data
+    """
+    if to_channel_last:
+        if len(data.shape) == 3:
+            return np.rollaxis(data, 0, 3)
+        else:
+            return np.rollaxis(data, 1, 4)
+    else:
+        if len(data.shape) == 3:
+            return np.rollaxis(data, 2, 0)
+        else:
+            return np.rollaxis(data, 3, 1)
 
 
 def get_default_colors():
@@ -90,10 +108,10 @@ def make_tb_image(img, lbl, pred, n_class, mean, std, chanel_first=True):
     pred = np.argmax(pred, 1)
     label_image = decode_label_map(lbl, n_class)
     pred_image = decode_label_map(pred, n_class)
-    img_image = inv_normalize(data_utils.change_channel_order(img), mean, std) * 255
+    img_image = inv_normalize(change_channel_order(img), mean, std) * 255
     banner = np.concatenate([img_image, label_image, pred_image], axis=2).astype(np.uint8)
     if chanel_first:
-        banner = data_utils.change_channel_order(banner, False)
+        banner = change_channel_order(banner, False)
     return banner
 
 
@@ -118,10 +136,10 @@ def make_image_banner(imgs, n_class, mean, std, max_ind=(2, ), decode_ind=(1, 2)
             imgs[cnt] = decode_label_map(imgs[cnt], n_class)
         if (cnt not in max_ind) and (cnt not in decode_ind):
             # rgb image: N * 3 * H * W
-            imgs[cnt] = inv_normalize(data_utils.change_channel_order(imgs[cnt]), mean, std) * 255
+            imgs[cnt] = inv_normalize(change_channel_order(imgs[cnt]), mean, std) * 255
     banner = np.concatenate(imgs, axis=2).astype(np.uint8)
     if chanel_first:
-        banner = data_utils.change_channel_order(banner, False)
+        banner = change_channel_order(banner, False)
     return banner
 
 
