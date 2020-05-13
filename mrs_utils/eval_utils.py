@@ -11,9 +11,12 @@ import re
 import scipy.special
 import skimage.transform
 import numpy as np
+import toolman as tm
 from tqdm import tqdm
 from skimage import measure
 from scipy.spatial import KDTree
+import pydensecrf.densecrf as dcrf
+from pydensecrf.utils import unary_from_softmax
 from sklearn.metrics import precision_recall_curve, average_precision_score
 
 # PyTorch
@@ -409,11 +412,13 @@ class Evaluator:
         return print_string, report_string
 
     def evaluate(self, model, patch_size, overlap, pred_dir=None, report_dir=None, save_conf=False, delta=1e-6,
-                 eval_class=(1, ), visualize=False):
+                 eval_class=(1, ), visualize=False, densecrf=False, crf_params=None, verbose=True):
         if isinstance(model, list) or isinstance(model, tuple):
             lbl_margin = model[0].lbl_margin
         else:
             lbl_margin = model.lbl_margin
+        if crf_params is None and densecrf:
+            crf_params = {'sxy': 3, 'srgb': 3, 'compat': 5}
 
         iou_a, iou_b = np.zeros(len(eval_class)), np.zeros(len(eval_class))
         report = []
@@ -443,10 +448,20 @@ class Evaluator:
             if save_conf:
                 misc_utils.save_file(os.path.join(pred_dir, '{}.npy'.format(file_name)),
                                      scipy.special.softmax(tile_preds, axis=-1)[:, :, 1])
-            tile_preds = np.argmax(tile_preds, -1)
+
+            if densecrf:
+                d = dcrf.DenseCRF2D(*tile_preds.shape)
+                U = unary_from_softmax(np.ascontiguousarray(
+                    data_utils.change_channel_order(scipy.special.softmax(tile_preds, axis=-1), False)))
+                d.setUnaryEnergy(U)
+                d.addPairwiseBilateral(rgbim=rgb, **crf_params)
+                Q = d.inference(5)
+                tile_preds = np.argmax(Q, axis=0).reshape(*tile_preds.shape[:2])
+            else:
+                tile_preds = np.argmax(tile_preds, -1)
             iou_score = metric_utils.iou_metric(lbl/self.truth_val, tile_preds, eval_class=eval_class)
             pstr, rstr = self.get_result_strings(file_name, iou_score, delta)
-            print(pstr)
+            tm.misc_utils.verb_print(pstr, verbose)
             report.append(rstr)
             iou_a += iou_score[0, :]
             iou_b += iou_score[1, :]
@@ -462,7 +477,7 @@ class Evaluator:
                 else:
                     misc_utils.save_file(os.path.join(pred_dir, '{}.png'.format(file_name)), tile_preds)
         pstr, rstr = self.get_result_strings('Overall', np.stack([iou_a, iou_b], axis=0), delta)
-        print(pstr)
+        tm.misc_utils.verb_print(pstr, verbose)
         report.append(rstr)
         if report_dir:
             misc_utils.make_dir_if_not_exist(report_dir)
@@ -492,11 +507,14 @@ class Evaluator:
         )
         return tile_preds
 
-    def infer(self, model, pred_dir, patch_size, overlap, ext='_mask', file_ext='png', visualize=False):
+    def infer(self, model, pred_dir, patch_size, overlap, ext='_mask', file_ext='png', visualize=False,
+              densecrf=False, crf_params=None):
         if isinstance(model, list) or isinstance(model, tuple):
             lbl_margin = model[0].lbl_margin
         else:
             lbl_margin = model.lbl_margin
+        if crf_params is None and densecrf:
+            crf_params = {'sxy': 3, 'srgb': 3, 'compat': 5}
 
         misc_utils.make_dir_if_not_exist(pred_dir)
         pbar = tqdm(self.rgb_files)
@@ -518,7 +536,17 @@ class Evaluator:
                                                               lbl_margin)
             else:
                 tile_preds = self.infer_tile(model, rgb, grid_list, patch_size, tile_dim, tile_dim_pad, lbl_margin)
-            tile_preds = np.argmax(tile_preds, -1)
+
+            if densecrf:
+                d = dcrf.DenseCRF2D(*tile_preds.shape)
+                U = unary_from_softmax(np.ascontiguousarray(
+                    data_utils.change_channel_order(scipy.special.softmax(tile_preds, axis=-1), False)))
+                d.setUnaryEnergy(U)
+                d.addPairwiseBilateral(rgbim=rgb, **crf_params)
+                Q = d.inference(5)
+                tile_preds = np.argmax(Q, axis=0).reshape(*tile_preds.shape[:2])
+            else:
+                tile_preds = np.argmax(tile_preds, -1)
 
             if self.encode_func:
                 pred_img = self.encode_func(tile_preds)
