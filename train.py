@@ -19,7 +19,7 @@ from torch import optim
 from torch.utils.data import DataLoader
 
 # Own modules
-from data import data_loader
+from data import data_loader, data_utils
 from network import network_utils, network_io
 from mrs_utils import misc_utils, metric_utils
 
@@ -97,7 +97,8 @@ def train_model(args, device, parallel):
     train_val_loaders = {'train': [], 'valid': []}
     for ds_cfg in ds_cfgs:
         mean, std = network_io.get_dataset_stats(args[ds_cfg]['ds_name'], args[ds_cfg]['data_dir'],
-                                                 mean_val=(eval(args[ds_cfg]['mean']), eval(args[ds_cfg]['std'])))
+                                                 mean_val=(eval(args[ds_cfg]['mean']), eval(args[ds_cfg]['std'])),
+                                                 load_func=data_utils.default_get_stats)
         tsfm_train, tsfm_valid = network_io.create_tsfm(args, mean, std)
         train_loader = DataLoader(data_loader.get_loader(
             args[ds_cfg]['data_dir'], args[ds_cfg]['train_file'], transforms=tsfm_train,

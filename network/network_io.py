@@ -158,12 +158,16 @@ def get_dataset_stats(ds_name, img_dir, load_func=None, mean_val=([0.485, 0.456,
         val = preprocess.get_stats_pb(img_dir)[0]
         print('Use {} mean std stats: {}'.format(ds_name, val))
     elif load_func:
-        val = process_block.ValueComputeProcess(
-            ds_name, os.path.join(os.path.dirname(__file__), '../data/stats/custom'),
-            os.path.join(os.path.dirname(__file__), '../data/stats/custom/{}.npy'.format(ds_name)),
-            func=load_func). \
-            run(img_dir=img_dir).val
-        print('Use {} mean std stats: {}'.format(ds_name, val))
+        try:
+            val = process_block.ValueComputeProcess(
+                ds_name, os.path.join(os.path.dirname(__file__), '../data/stats/custom'),
+                os.path.join(os.path.dirname(__file__), '../data/stats/custom/{}.npy'.format(ds_name)),
+                func=load_func). \
+                run(img_dir=img_dir).val
+            print('Use {} mean std stats: {}'.format(ds_name, val))
+        except ValueError:
+            print('Dataset {} is not supported, use default mean stats instead'.format(ds_name))
+            return np.array(mean_val)
     else:
         print('Dataset {} is not supported, use default mean stats instead'.format(ds_name))
         return np.array(mean_val)
