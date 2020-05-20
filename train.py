@@ -98,7 +98,8 @@ def train_model(args, device, parallel):
     for ds_cfg in ds_cfgs:
         mean, std = network_io.get_dataset_stats(args[ds_cfg]['ds_name'], args[ds_cfg]['data_dir'],
                                                  mean_val=(eval(args[ds_cfg]['mean']), eval(args[ds_cfg]['std'])),
-                                                 load_func=data_utils.default_get_stats)
+                                                 load_func=data_utils.default_get_stats,
+                                                 file_list=args[ds_cfg]['train_file'])
         tsfm_train, tsfm_valid = network_io.create_tsfm(args, mean, std)
         train_loader = DataLoader(data_loader.get_loader(
             args[ds_cfg]['data_dir'], args[ds_cfg]['train_file'], transforms=tsfm_train,

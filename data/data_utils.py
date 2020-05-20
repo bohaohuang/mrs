@@ -177,8 +177,7 @@ def get_ds_stats(img_files):
     return ds_mean, ds_std
 
 
-def default_get_stats(img_dir):
-    file_list = os.path.normpath(os.path.join(img_dir, '../', 'file_list_train.txt'))
+def default_get_stats(img_dir, file_list):
     file_list = misc_utils.load_file(file_list)
     rgb_imgs = [os.path.join(img_dir, a.strip().split(' ')[0]) for a in file_list]
     ds_mean, ds_std = get_ds_stats(rgb_imgs)

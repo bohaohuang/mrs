@@ -132,7 +132,8 @@ def create_tsfm(args, mean, std, normalize=True):
     return tsfm_train, tsfm_valid
 
 
-def get_dataset_stats(ds_name, img_dir, load_func=None, mean_val=([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])):
+def get_dataset_stats(ds_name, img_dir, load_func=None, file_list=None,
+                      mean_val=([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])):
     if ds_name == 'inria':
         from data.inria import preprocess
         val = preprocess.get_stats_pb(img_dir)[0]
@@ -163,7 +164,7 @@ def get_dataset_stats(ds_name, img_dir, load_func=None, mean_val=([0.485, 0.456,
                 ds_name, os.path.join(os.path.dirname(__file__), '../data/stats/custom'),
                 os.path.join(os.path.dirname(__file__), '../data/stats/custom/{}.npy'.format(ds_name)),
                 func=load_func). \
-                run(img_dir=img_dir).val
+                run(img_dir=img_dir, file_list=file_list).val
             print('Use {} mean std stats: {}'.format(ds_name, val))
         except ValueError:
             print('Dataset {} is not supported, use default mean stats instead'.format(ds_name))
