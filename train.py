@@ -95,11 +95,14 @@ def train_model(args, device, parallel):
     assert ds_cfgs[0] == 'dataset'
 
     train_val_loaders = {'train': [], 'valid': []}
+    if args['dataset']['load_func'] == 'default':
+        load_func = data_utils.default_get_stats
+    else:
+        load_func = None
     for ds_cfg in ds_cfgs:
         mean, std = network_io.get_dataset_stats(args[ds_cfg]['ds_name'], args[ds_cfg]['data_dir'],
                                                  mean_val=(eval(args[ds_cfg]['mean']), eval(args[ds_cfg]['std'])),
-                                                 load_func=data_utils.default_get_stats,
-                                                 file_list=args[ds_cfg]['train_file'])
+                                                 load_func=load_func, file_list=args[ds_cfg]['train_file'])
         tsfm_train, tsfm_valid = network_io.create_tsfm(args, mean, std)
         train_loader = DataLoader(data_loader.get_loader(
             args[ds_cfg]['data_dir'], args[ds_cfg]['train_file'], transforms=tsfm_train,
@@ -115,8 +118,6 @@ def train_model(args, device, parallel):
                 batch_size=int(args[ds_cfg]['batch_size']), shuffle=False, num_workers=int(args[ds_cfg]['num_workers']))
             print('Training model on the {} dataset'.format(args[ds_cfg]['ds_name']))
             train_val_loaders['valid'].append(valid_loader)
-    mean, std = network_io.get_dataset_stats(args['dataset']['ds_name'], args['dataset']['data_dir'],
-                                             mean_val=(eval(args['dataset']['mean']), eval(args['dataset']['std'])))
 
     # train the model
     loss_dict = {}

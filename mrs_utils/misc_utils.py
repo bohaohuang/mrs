@@ -452,4 +452,9 @@ def historical_process_flag(flags):
         flags['trainer']['gamma'] = 2
     if 'alpha' not in flags['trainer']:
         flags['trainer']['alpha'] = 0.25
+    if 'load_func' not in flags['dataset']:
+        flags['dataset']['load_func'] = 'default'
+    else:
+        assert flags['dataset']['load_func'] == 'default' or flags['dataset']['load_func'] == 'None'
+
     return flags
