@@ -23,7 +23,7 @@ from data import data_loader, data_utils
 from network import network_utils, network_io
 from mrs_utils import misc_utils, metric_utils
 
-CONFIG_FILE = 'temp_unit_test_config.json'
+CONFIG_FILE = 'temp_config_dg.json'
 
 
 def read_config():

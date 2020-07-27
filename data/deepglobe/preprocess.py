@@ -166,6 +166,13 @@ def get_images(data_dir):
 
 
 if __name__ == '__main__':
-    save_dir = os.path.join(r'/hdd/mrs/deepglobe', 'pd{}_ol{}'.format(0, 0))
-    train, valid = get_image_gt(r'/hdd/deepglobe', ['Vegas', 'Paris', 'Shanghai', 'Khartoum'], valid_percent=0.4)
-    make_dataset(train, valid, save_dir)
+    # save_dir = os.path.join(r'/hdd/mrs/deepglobe', 'pd{}_ol{}'.format(0, 0))
+    # train, valid = get_image_gt(r'/hdd/deepglobe', ['Vegas', 'Paris', 'Shanghai', 'Khartoum'], valid_percent=0.4)
+    # make_dataset(train, valid, save_dir)
+
+    val = process_block.ValueComputeProcess(
+        'DeepGlobe_cmatch', os.path.join(os.path.dirname(__file__), '../stats/custom'),
+        os.path.join(os.path.dirname(__file__), '../stats/custom/{}_cmatch.npy'.format(DS_NAME)), func=get_stats). \
+        run(img_dir='/hdd/mrs/deepglobe_cmatch/14p_pd0_ol0/patches').val
+    val_test = val
+    print(val)
