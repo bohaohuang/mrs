@@ -451,7 +451,7 @@ class Evaluator:
             if densecrf:
                 d = dcrf.DenseCRF2D(*tile_preds.shape)
                 U = unary_from_softmax(np.ascontiguousarray(
-                    data_utils.change_channel_order(scipy.special.softmax(tile_preds, axis=-1), False)))
+                    data_utils.change_channel_order(tile_preds, False)))
                 d.setUnaryEnergy(U)
                 d.addPairwiseBilateral(rgbim=rgb, **crf_params)
                 Q = d.inference(5)
@@ -539,7 +539,7 @@ class Evaluator:
             if densecrf:
                 d = dcrf.DenseCRF2D(*tile_preds.shape)
                 U = unary_from_softmax(np.ascontiguousarray(
-                    data_utils.change_channel_order(scipy.special.softmax(tile_preds, axis=-1), False)))
+                    data_utils.change_channel_order(tile_preds, False)))
                 d.setUnaryEnergy(U)
                 d.addPairwiseBilateral(rgbim=rgb, **crf_params)
                 Q = d.inference(5)
