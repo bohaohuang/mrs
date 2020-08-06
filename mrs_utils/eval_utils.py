@@ -446,13 +446,12 @@ class Evaluator:
                 tile_preds = self.infer_tile(model, rgb, grid_list, patch_size, tile_dim, tile_dim_pad, lbl_margin)
 
             if save_conf:
-                misc_utils.save_file(os.path.join(pred_dir, '{}.npy'.format(file_name)),
-                                     scipy.special.softmax(tile_preds, axis=-1)[:, :, 1])
+                misc_utils.save_file(os.path.join(pred_dir, '{}.npy'.format(file_name)), tile_preds[:, :, 1])
 
             if densecrf:
                 d = dcrf.DenseCRF2D(*tile_preds.shape)
                 U = unary_from_softmax(np.ascontiguousarray(
-                    data_utils.change_channel_order(scipy.special.softmax(tile_preds, axis=-1), False)))
+                    data_utils.change_channel_order(tile_preds, False)))
                 d.setUnaryEnergy(U)
                 d.addPairwiseBilateral(rgbim=rgb, **crf_params)
                 Q = d.inference(5)
@@ -540,7 +539,7 @@ class Evaluator:
             if densecrf:
                 d = dcrf.DenseCRF2D(*tile_preds.shape)
                 U = unary_from_softmax(np.ascontiguousarray(
-                    data_utils.change_channel_order(scipy.special.softmax(tile_preds, axis=-1), False)))
+                    data_utils.change_channel_order(tile_preds, False)))
                 d.setUnaryEnergy(U)
                 d.addPairwiseBilateral(rgbim=rgb, **crf_params)
                 Q = d.inference(5)
