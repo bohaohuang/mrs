@@ -95,11 +95,12 @@ def train_model(args, device, parallel):
     assert ds_cfgs[0] == 'dataset'
 
     train_val_loaders = {'train': [], 'valid': []}
-    if args['dataset']['load_func'] == 'default':
-        load_func = data_utils.default_get_stats
-    else:
-        load_func = None
     for ds_cfg in ds_cfgs:
+        if args[ds_cfg]['load_func'] == 'default':
+            load_func = data_utils.default_get_stats
+        else:
+            load_func = None
+
         mean, std = network_io.get_dataset_stats(args[ds_cfg]['ds_name'], args[ds_cfg]['data_dir'],
                                                  mean_val=(eval(args[ds_cfg]['mean']), eval(args[ds_cfg]['std'])),
                                                  load_func=load_func, file_list=args[ds_cfg]['train_file'])
