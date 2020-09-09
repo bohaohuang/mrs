@@ -456,6 +456,6 @@ def historical_process_flag(flags):
         if 'load_func' not in flags[ds_flag]:
             flags[ds_flag]['load_func'] = 'default'
         else:
-            assert flags[ds_flag]['load_func'] == 'default' or flags['dataset']['load_func'] == 'None'
+            assert flags[ds_flag]['load_func'] == 'default' or flags[ds_flag]['load_func'] == 'None'
 
     return flags

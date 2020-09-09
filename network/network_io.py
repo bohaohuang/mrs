@@ -176,8 +176,8 @@ def get_dataset_stats(ds_name, img_dir, load_func=None, file_list=None,
             val = misc_utils.load_file(os.path.join(os.path.realpath(os.path.join(os.path.dirname(__file__), '..')),
                                                     'data/stats/custom/{}.npy'.format(ds_name)))
             print('Use {} mean std stats: {}'.format(ds_name, val))
-        except FileNotFoundError:
-            print('Dataset {} is not supported, use default mean stats instead'.format(ds_name))
+        except (FileNotFoundError, OSError):
+            print('Dataset {} is not supported, use default mean stats instead {}'.format(ds_name, mean_val))
             return np.array(mean_val)
     return val[0, :], val[1, :]
 
