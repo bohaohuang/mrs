@@ -41,7 +41,7 @@ def display_group(reg_groups, size, img=None, need_return=False):
     for cnt, group in enumerate(reg_groups):
         for g in group:
             coords = np.array(g.coords)
-            group_map[coords[:, 0], coords[:, 1]] = cnt
+            group_map[coords[:, 0], coords[:, 1]] = cnt + 1
     if need_return:
         return group_map
     else:
